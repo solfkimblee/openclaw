@@ -171,6 +171,20 @@ export const RPC_METHOD_REGISTRY: Record<string, RpcMethodMeta> = {
     description: "Block until a specific agent run completes or times out.",
     category: "chat",
   },
+  "chat.inject": {
+    paramsSchema: "ChatInjectParams",
+    resultSchema: null,
+    scope: "write",
+    description: "Inject a synthetic message into a session transcript.",
+    category: "chat",
+  },
+  poll: {
+    paramsSchema: "PollParams",
+    resultSchema: null,
+    scope: "write",
+    description: "Send a poll with multiple choice options to a channel peer.",
+    category: "chat",
+  },
 
   // ── Agents ──────────────────────────────────────────────────────────
   "agents.list": {
@@ -268,12 +282,40 @@ export const RPC_METHOD_REGISTRY: Record<string, RpcMethodMeta> = {
     description: "Delete a session and optionally its transcript file.",
     category: "sessions",
   },
+  "sessions.resolve": {
+    paramsSchema: "SessionsResolveParams",
+    resultSchema: null,
+    scope: "read",
+    description: "Resolve a session by key, ID, label, or agent, returning its metadata.",
+    category: "sessions",
+  },
   "sessions.compact": {
     paramsSchema: "SessionsCompactParams",
     resultSchema: null,
     scope: "admin",
     description: "Compact a session transcript by summarizing older messages.",
     category: "sessions",
+  },
+  "sessions.usage": {
+    paramsSchema: "SessionsUsageParams",
+    resultSchema: null,
+    scope: "read",
+    description: "Return token usage summary for one or all sessions.",
+    category: "usage",
+  },
+  "sessions.usage.timeseries": {
+    paramsSchema: null,
+    resultSchema: null,
+    scope: "read",
+    description: "Return time-series usage data for a session.",
+    category: "usage",
+  },
+  "sessions.usage.logs": {
+    paramsSchema: null,
+    resultSchema: null,
+    scope: "read",
+    description: "Return detailed usage logs for a session.",
+    category: "usage",
   },
 
   // ── Config ──────────────────────────────────────────────────────────
@@ -333,6 +375,20 @@ export const RPC_METHOD_REGISTRY: Record<string, RpcMethodMeta> = {
     resultSchema: null,
     scope: "write",
     description: "Enable, disable, or toggle voice talk mode.",
+    category: "channels",
+  },
+  "web.login.start": {
+    paramsSchema: "WebLoginStartParams",
+    resultSchema: null,
+    scope: "admin",
+    description: "Initiate a web-based login flow for channel authentication.",
+    category: "channels",
+  },
+  "web.login.wait": {
+    paramsSchema: "WebLoginWaitParams",
+    resultSchema: null,
+    scope: "admin",
+    description: "Wait for a web-based login flow to complete.",
     category: "channels",
   },
 
@@ -874,13 +930,16 @@ export function generateApiReference(): string {
       // Params
       if (meta.paramsSchema) {
         const schema = resolveSchema(meta.paramsSchema);
-        if (schema) {
+        const propRows = schema ? renderSchemaProps(schema) : [];
+        if (propRows.length > 0) {
           lines.push(`**Params** (\`${meta.paramsSchema}\`):`);
           lines.push("");
           lines.push("| Field | Type | Required |");
           lines.push("|-------|------|----------|");
-          lines.push(...renderSchemaProps(schema));
+          lines.push(...propRows);
           lines.push("");
+        } else {
+          lines.push(`**Params:** none (empty object)`, "");
         }
       } else {
         lines.push("**Params:** none", "");
@@ -889,12 +948,13 @@ export function generateApiReference(): string {
       // Result
       if (meta.resultSchema) {
         const schema = resolveSchema(meta.resultSchema);
-        if (schema) {
+        const propRows = schema ? renderSchemaProps(schema) : [];
+        if (propRows.length > 0) {
           lines.push(`**Result** (\`${meta.resultSchema}\`):`);
           lines.push("");
           lines.push("| Field | Type | Required |");
           lines.push("|-------|------|----------|");
-          lines.push(...renderSchemaProps(schema));
+          lines.push(...propRows);
           lines.push("");
         }
       }

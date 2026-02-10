@@ -3,10 +3,11 @@ import { RPC_METHOD_REGISTRY, generateApiReference, generateMethodIndex } from "
 import { ProtocolSchemas } from "./schema/protocol-schemas.js";
 
 /**
- * Hard-coded list of the 91 base methods from server-methods-list.ts.
+ * Authoritative list of all documented RPC methods. Includes both ALL_DOCUMENTED_METHODS
+ * from server-methods-list.ts and handler-only methods from coreGatewayHandlers.
  * Kept in sync manually — the test below catches drift.
  */
-const BASE_METHODS = [
+const ALL_DOCUMENTED_METHODS = [
   "health",
   "logs.tail",
   "channels.status",
@@ -53,10 +54,14 @@ const BASE_METHODS = [
   "voicewake.set",
   "sessions.list",
   "sessions.preview",
+  "sessions.resolve",
   "sessions.patch",
   "sessions.reset",
   "sessions.delete",
   "sessions.compact",
+  "sessions.usage",
+  "sessions.usage.timeseries",
+  "sessions.usage.logs",
   "last-heartbeat",
   "set-heartbeats",
   "wake",
@@ -89,21 +94,25 @@ const BASE_METHODS = [
   "agent",
   "agent.identity.get",
   "agent.wait",
-  "browser.request",
+  "chat.inject",
   "chat.history",
   "chat.abort",
   "chat.send",
+  "poll",
+  "browser.request",
+  "web.login.start",
+  "web.login.wait",
 ];
 
 describe("RPC_METHOD_REGISTRY", () => {
   it("covers every base method from server-methods-list", () => {
     const registryMethods = new Set(Object.keys(RPC_METHOD_REGISTRY));
-    const missing = BASE_METHODS.filter((m) => !registryMethods.has(m));
+    const missing = ALL_DOCUMENTED_METHODS.filter((m) => !registryMethods.has(m));
     expect(missing, `Methods missing from RPC_METHOD_REGISTRY: ${missing.join(", ")}`).toEqual([]);
   });
 
   it("does not contain phantom methods absent from the base list", () => {
-    const baseMethods = new Set(BASE_METHODS);
+    const baseMethods = new Set(ALL_DOCUMENTED_METHODS);
     const extra = Object.keys(RPC_METHOD_REGISTRY).filter((m) => !baseMethods.has(m));
     expect(extra, `Extra methods in RPC_METHOD_REGISTRY: ${extra.join(", ")}`).toEqual([]);
   });

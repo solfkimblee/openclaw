@@ -341,6 +341,43 @@ Block until a specific agent run completes or times out.
 
 ---
 
+### `chat.inject`
+
+Inject a synthetic message into a session transcript.
+
+**Scope:** `operator.write`
+
+**Params** (`ChatInjectParams`):
+
+| Field        | Type            | Required |
+| ------------ | --------------- | -------- |
+| `sessionKey` | string, min:1   | Yes      |
+| `message`    | string, min:1   | Yes      |
+| `label`      | string, max:100 | No       |
+
+---
+
+### `poll`
+
+Send a poll with multiple choice options to a channel peer.
+
+**Scope:** `operator.write`
+
+**Params** (`PollParams`):
+
+| Field            | Type                   | Required |
+| ---------------- | ---------------------- | -------- |
+| `to`             | string, min:1          | Yes      |
+| `question`       | string, min:1          | Yes      |
+| `options`        | array                  | Yes      |
+| `maxSelections`  | integer, min:1, max:12 | No       |
+| `durationHours`  | integer, min:1         | No       |
+| `channel`        | string                 | No       |
+| `accountId`      | string                 | No       |
+| `idempotencyKey` | string, min:1          | Yes      |
+
+---
+
 ## Agents & Models
 
 ### `agents.list`
@@ -349,10 +386,7 @@ List all configured agents and the default agent ID.
 
 **Scope:** `operator.read`
 
-**Params** (`AgentsListParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 **Result** (`AgentsListResult`):
 
@@ -515,10 +549,7 @@ List all available AI models across configured providers.
 
 **Scope:** `operator.read`
 
-**Params** (`ModelsListParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 **Result** (`ModelsListResult`):
 
@@ -626,6 +657,26 @@ Delete a session and optionally its transcript file.
 
 ---
 
+### `sessions.resolve`
+
+Resolve a session by key, ID, label, or agent, returning its metadata.
+
+**Scope:** `operator.read`
+
+**Params** (`SessionsResolveParams`):
+
+| Field            | Type                  | Required |
+| ---------------- | --------------------- | -------- |
+| `key`            | string, min:1         | No       |
+| `sessionId`      | string, min:1         | No       |
+| `label`          | string, min:1, max:64 | No       |
+| `agentId`        | string, min:1         | No       |
+| `spawnedBy`      | string, min:1         | No       |
+| `includeGlobal`  | boolean               | No       |
+| `includeUnknown` | boolean               | No       |
+
+---
+
 ### `sessions.compact`
 
 Compact a session transcript by summarizing older messages.
@@ -649,10 +700,7 @@ Read the current gateway configuration (full or a specific key path).
 
 **Scope:** `operator.admin`
 
-**Params** (`ConfigGetParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -713,10 +761,7 @@ Return the JSON Schema for the gateway configuration.
 
 **Scope:** `operator.admin`
 
-**Params** (`ConfigSchemaParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 **Result** (`ConfigSchemaResponse`):
 
@@ -787,6 +832,38 @@ Enable, disable, or toggle voice talk mode.
 | --------- | ------- | -------- |
 | `enabled` | boolean | Yes      |
 | `phase`   | string  | No       |
+
+---
+
+### `web.login.start`
+
+Initiate a web-based login flow for channel authentication.
+
+**Scope:** `operator.admin`
+
+**Params** (`WebLoginStartParams`):
+
+| Field       | Type           | Required |
+| ----------- | -------------- | -------- |
+| `force`     | boolean        | No       |
+| `timeoutMs` | integer, min:0 | No       |
+| `verbose`   | boolean        | No       |
+| `accountId` | string         | No       |
+
+---
+
+### `web.login.wait`
+
+Wait for a web-based login flow to complete.
+
+**Scope:** `operator.admin`
+
+**Params** (`WebLoginWaitParams`):
+
+| Field       | Type           | Required |
+| ----------- | -------------- | -------- |
+| `timeoutMs` | integer, min:0 | No       |
+| `accountId` | string         | No       |
 
 ---
 
@@ -894,10 +971,7 @@ List skill binary paths available on the host node.
 
 **Scope:** `node` role
 
-**Params** (`SkillsBinsParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 **Result** (`SkillsBinsResult`):
 
@@ -962,10 +1036,7 @@ Get the status and next run time of a specific cron job.
 
 **Scope:** `operator.read`
 
-**Params** (`CronStatusParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -998,10 +1069,7 @@ Update an existing cron job's schedule or configuration.
 
 **Scope:** `operator.admin`
 
-**Params** (`CronUpdateParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -1011,10 +1079,7 @@ Delete a scheduled cron job.
 
 **Scope:** `operator.admin`
 
-**Params** (`CronRemoveParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -1024,10 +1089,7 @@ Manually trigger a cron job to run immediately.
 
 **Scope:** `operator.admin`
 
-**Params** (`CronRunParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -1037,10 +1099,7 @@ List recent execution history for a cron job.
 
 **Scope:** `operator.read`
 
-**Params** (`CronRunsParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -1077,10 +1136,7 @@ List pending and approved node pairing entries.
 
 **Scope:** `operator.pairing`
 
-**Params** (`NodePairListParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -1148,10 +1204,7 @@ List all paired and connected nodes.
 
 **Scope:** `operator.read`
 
-**Params** (`NodeListParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -1230,10 +1283,7 @@ List pending and approved device pairing entries.
 
 **Scope:** `operator.pairing`
 
-**Params** (`DevicePairListParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 ---
 
@@ -1304,10 +1354,7 @@ Get the current execution approval policy snapshot.
 
 **Scope:** `operator.admin`
 
-**Params** (`ExecApprovalsGetParams`):
-
-| Field | Type | Required |
-| ----- | ---- | -------- |
+**Params:** none (empty object)
 
 **Result** (`ExecApprovalsSnapshot`):
 
@@ -1490,6 +1537,44 @@ Get the current status and step of the setup wizard.
 ---
 
 ## Usage & Cost
+
+### `sessions.usage`
+
+Return token usage summary for one or all sessions.
+
+**Scope:** `operator.read`
+
+**Params** (`SessionsUsageParams`):
+
+| Field                  | Type                                  | Required |
+| ---------------------- | ------------------------------------- | -------- |
+| `key`                  | string, min:1                         | No       |
+| `startDate`            | string, pattern:`^\d{4}-\d{2}-\d{2}$` | No       |
+| `endDate`              | string, pattern:`^\d{4}-\d{2}-\d{2}$` | No       |
+| `limit`                | integer, min:1                        | No       |
+| `includeContextWeight` | boolean                               | No       |
+
+---
+
+### `sessions.usage.timeseries`
+
+Return time-series usage data for a session.
+
+**Scope:** `operator.read`
+
+**Params:** none
+
+---
+
+### `sessions.usage.logs`
+
+Return detailed usage logs for a session.
+
+**Scope:** `operator.read`
+
+**Params:** none
+
+---
 
 ### `usage.status`
 
