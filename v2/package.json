@@ -1,0 +1,59 @@
+{
+  "name": "openclaw",
+  "version": "2.0.0",
+  "description": "Personal AI assistant gateway — simplified, clean architecture",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "openclaw": "./dist/cli/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./plugin-sdk": {
+      "import": "./dist/plugins/types.js",
+      "types": "./dist/plugins/types.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "oxlint src/",
+    "format": "oxfmt src/",
+    "check": "tsc --noEmit && oxlint src/ && oxfmt --check src/",
+    "gateway": "tsx src/cli/index.ts gateway",
+    "gateway:dev": "tsx watch src/cli/index.ts gateway --verbose"
+  },
+  "dependencies": {
+    "commander": "^13.0.0",
+    "dotenv": "^16.4.0",
+    "express": "^5.0.0",
+    "grammy": "^1.30.0",
+    "ws": "^8.18.0",
+    "zod": "^3.24.0",
+    "openai": "^4.70.0",
+    "@anthropic-ai/sdk": "^0.30.0",
+    "nanoid": "^5.0.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/ws": "^8.5.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.0.0"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "gateway": {
+    "port": 18789,
+    "host": "127.0.0.1"
+  },
+  "agents": [
+    {
+      "id": "main",
+      "name": "Assistant",
+      "systemPrompt": "You are a helpful AI assistant. Be concise and accurate.",
+      "provider": {
+        "type": "anthropic",
+        "apiKey": "sk-ant-your-key-here",
+        "model": "claude-sonnet-4-20250514"
+      },
+      "tools": ["current_time", "web_search", "memory_store", "memory_recall"],
+      "maxTokens": 4096
+    }
+  ],
+  "defaultAgent": "main",
+  "channels": {
+    "telegram": {
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "allowedChatIds": []
+    },
+    "web": {
+      "enabled": true,
+      "path": "/chat"
+    }
+  },
+  "session": {
+    "scope": "per-sender",
+    "maxMessages": 100,
+    "idleResetMinutes": 60
+  },
+  "logLevel": "info"
+}
