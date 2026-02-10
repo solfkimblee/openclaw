@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { generateApiReference, generateMethodIndex } from "../src/gateway/protocol/rpc-registry.js";
 import { ProtocolSchemas } from "../src/gateway/protocol/schema.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,8 +42,27 @@ async function writeJsonSchema() {
   return { jsonSchemaPath, schemaString: JSON.stringify(rootSchema) };
 }
 
+async function writeApiReference() {
+  const docsDir = path.join(repoRoot, "docs", "gateway");
+  await fs.mkdir(docsDir, { recursive: true });
+
+  // Markdown reference
+  const markdown = generateApiReference();
+  const mdPath = path.join(docsDir, "api-reference.md");
+  await fs.writeFile(mdPath, markdown);
+  console.log(`wrote ${mdPath}`);
+
+  // Machine-readable method index
+  const distDir = path.join(repoRoot, "dist");
+  await fs.mkdir(distDir, { recursive: true });
+  const indexPath = path.join(distDir, "rpc-methods.json");
+  await fs.writeFile(indexPath, JSON.stringify(generateMethodIndex(), null, 2));
+  console.log(`wrote ${indexPath}`);
+}
+
 async function main() {
   await writeJsonSchema();
+  await writeApiReference();
 }
 
 main().catch((err) => {
