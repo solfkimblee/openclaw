@@ -20,13 +20,9 @@ import { resolveSessionTranscriptsDirForAgent } from "../config/sessions/paths.j
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { onSessionTranscriptUpdate } from "../sessions/transcript-events.js";
 import { resolveUserPath } from "../utils.js";
-import { runGeminiEmbeddingBatches, type GeminiBatchRequest } from "./batch-gemini.js";
-import {
-  OPENAI_BATCH_ENDPOINT,
-  type OpenAiBatchRequest,
-  runOpenAiEmbeddingBatches,
-} from "./batch-openai.js";
-import { type VoyageBatchRequest, runVoyageEmbeddingBatches } from "./batch-voyage.js";
+import { runGeminiEmbeddingBatches } from "./batch-gemini.js";
+import { OPENAI_BATCH_ENDPOINT, runOpenAiEmbeddingBatches } from "./batch-openai.js";
+import { runVoyageEmbeddingBatches } from "./batch-voyage.js";
 import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
 import { DEFAULT_OPENAI_EMBEDDING_MODEL } from "./embeddings-openai.js";
 import { DEFAULT_VOYAGE_EMBEDDING_MODEL } from "./embeddings-voyage.js";
@@ -1870,32 +1866,102 @@ export class MemoryIndexManager implements MemorySearchManager {
     source: MemorySource,
   ): Promise<number[][]> {
     if (this.provider.id === "openai" && this.openAi) {
-      return this.embedChunksWithOpenAiBatch(chunks, entry, source);
+      return this.embedChunksWithProviderBatch(chunks, entry, source, {
+        provider: "openai",
+        buildRequests: (missing) =>
+          missing.map((item) => ({
+            custom_id: item.customId,
+            method: "POST" as const,
+            url: OPENAI_BATCH_ENDPOINT,
+            body: {
+              model: this.openAi?.model ?? this.provider.model,
+              input: item.chunk.text,
+            },
+          })),
+        runBatch: (requests) =>
+          runOpenAiEmbeddingBatches({
+            openAi: this.openAi!,
+            agentId: this.agentId,
+            requests,
+            wait: this.batch.wait,
+            concurrency: this.batch.concurrency,
+            pollIntervalMs: this.batch.pollIntervalMs,
+            timeoutMs: this.batch.timeoutMs,
+            debug: (message, data) =>
+              log.debug(message, { ...data, source, chunks: chunks.length }),
+          }),
+      });
     }
     if (this.provider.id === "gemini" && this.gemini) {
-      return this.embedChunksWithGeminiBatch(chunks, entry, source);
+      return this.embedChunksWithProviderBatch(chunks, entry, source, {
+        provider: "gemini",
+        buildRequests: (missing) =>
+          missing.map((item) => ({
+            custom_id: item.customId,
+            content: { parts: [{ text: item.chunk.text }] },
+            taskType: "RETRIEVAL_DOCUMENT" as const,
+          })),
+        runBatch: (requests) =>
+          runGeminiEmbeddingBatches({
+            gemini: this.gemini!,
+            agentId: this.agentId,
+            requests,
+            wait: this.batch.wait,
+            concurrency: this.batch.concurrency,
+            pollIntervalMs: this.batch.pollIntervalMs,
+            timeoutMs: this.batch.timeoutMs,
+            debug: (message, data) =>
+              log.debug(message, { ...data, source, chunks: chunks.length }),
+          }),
+      });
     }
     if (this.provider.id === "voyage" && this.voyage) {
-      return this.embedChunksWithVoyageBatch(chunks, entry, source);
+      return this.embedChunksWithProviderBatch(chunks, entry, source, {
+        provider: "voyage",
+        buildRequests: (missing) =>
+          missing.map((item) => ({
+            custom_id: item.customId,
+            body: { input: item.chunk.text },
+          })),
+        runBatch: (requests) =>
+          runVoyageEmbeddingBatches({
+            client: this.voyage!,
+            agentId: this.agentId,
+            requests,
+            wait: this.batch.wait,
+            concurrency: this.batch.concurrency,
+            pollIntervalMs: this.batch.pollIntervalMs,
+            timeoutMs: this.batch.timeoutMs,
+            debug: (message, data) =>
+              log.debug(message, { ...data, source, chunks: chunks.length }),
+          }),
+      });
     }
     return this.embedChunksInBatches(chunks);
   }
 
-  private async embedChunksWithVoyageBatch(
+  /**
+   * Generic batch embedding: handles cache lookup, request building, batch execution,
+   * fallback, and cache upsert. Provider-specific details are injected via `config`.
+   */
+  private async embedChunksWithProviderBatch<TRequest>(
     chunks: MemoryChunk[],
     entry: MemoryFileEntry | SessionFileEntry,
     source: MemorySource,
+    config: {
+      provider: string;
+      buildRequests: (
+        missing: Array<{ index: number; chunk: MemoryChunk; customId: string }>,
+      ) => TRequest[];
+      runBatch: (requests: TRequest[]) => Promise<Map<string, number[]>>;
+    },
   ): Promise<number[][]> {
-    const voyage = this.voyage;
-    if (!voyage) {
-      return this.embedChunksInBatches(chunks);
-    }
     if (chunks.length === 0) {
       return [];
     }
     const cached = this.loadEmbeddingCache(chunks.map((chunk) => chunk.hash));
     const embeddings: number[][] = Array.from({ length: chunks.length }, () => []);
-    const missing: Array<{ index: number; chunk: MemoryChunk }> = [];
+    const missing: Array<{ index: number; chunk: MemoryChunk; customId: string }> = [];
 
     for (let i = 0; i < chunks.length; i += 1) {
       const chunk = chunks[i];
@@ -1903,7 +1969,10 @@ export class MemoryIndexManager implements MemorySearchManager {
       if (hit && hit.length > 0) {
         embeddings[i] = hit;
       } else if (chunk) {
-        missing.push({ index: i, chunk });
+        const customId = hashText(
+          `${source}:${entry.path}:${chunk.startLine}:${chunk.endLine}:${chunk.hash}:${i}`,
+        );
+        missing.push({ index: i, chunk, customId });
       }
     }
 
@@ -1911,202 +1980,23 @@ export class MemoryIndexManager implements MemorySearchManager {
       return embeddings;
     }
 
-    const requests: VoyageBatchRequest[] = [];
+    const requests = config.buildRequests(missing);
     const mapping = new Map<string, { index: number; hash: string }>();
     for (const item of missing) {
-      const chunk = item.chunk;
-      const customId = hashText(
-        `${source}:${entry.path}:${chunk.startLine}:${chunk.endLine}:${chunk.hash}:${item.index}`,
-      );
-      mapping.set(customId, { index: item.index, hash: chunk.hash });
-      requests.push({
-        custom_id: customId,
-        body: {
-          input: chunk.text,
-        },
-      });
+      mapping.set(item.customId, { index: item.index, hash: item.chunk.hash });
     }
+
     const batchResult = await this.runBatchWithFallback({
-      provider: "voyage",
-      run: async () =>
-        await runVoyageEmbeddingBatches({
-          client: voyage,
-          agentId: this.agentId,
-          requests,
-          wait: this.batch.wait,
-          concurrency: this.batch.concurrency,
-          pollIntervalMs: this.batch.pollIntervalMs,
-          timeoutMs: this.batch.timeoutMs,
-          debug: (message, data) => log.debug(message, { ...data, source, chunks: chunks.length }),
-        }),
+      provider: config.provider,
+      run: async () => await config.runBatch(requests),
       fallback: async () => await this.embedChunksInBatches(chunks),
     });
     if (Array.isArray(batchResult)) {
       return batchResult;
     }
-    const byCustomId = batchResult;
 
     const toCache: Array<{ hash: string; embedding: number[] }> = [];
-    for (const [customId, embedding] of byCustomId.entries()) {
-      const mapped = mapping.get(customId);
-      if (!mapped) {
-        continue;
-      }
-      embeddings[mapped.index] = embedding;
-      toCache.push({ hash: mapped.hash, embedding });
-    }
-    this.upsertEmbeddingCache(toCache);
-    return embeddings;
-  }
-
-  private async embedChunksWithOpenAiBatch(
-    chunks: MemoryChunk[],
-    entry: MemoryFileEntry | SessionFileEntry,
-    source: MemorySource,
-  ): Promise<number[][]> {
-    const openAi = this.openAi;
-    if (!openAi) {
-      return this.embedChunksInBatches(chunks);
-    }
-    if (chunks.length === 0) {
-      return [];
-    }
-    const cached = this.loadEmbeddingCache(chunks.map((chunk) => chunk.hash));
-    const embeddings: number[][] = Array.from({ length: chunks.length }, () => []);
-    const missing: Array<{ index: number; chunk: MemoryChunk }> = [];
-
-    for (let i = 0; i < chunks.length; i += 1) {
-      const chunk = chunks[i];
-      const hit = chunk?.hash ? cached.get(chunk.hash) : undefined;
-      if (hit && hit.length > 0) {
-        embeddings[i] = hit;
-      } else if (chunk) {
-        missing.push({ index: i, chunk });
-      }
-    }
-
-    if (missing.length === 0) {
-      return embeddings;
-    }
-
-    const requests: OpenAiBatchRequest[] = [];
-    const mapping = new Map<string, { index: number; hash: string }>();
-    for (const item of missing) {
-      const chunk = item.chunk;
-      const customId = hashText(
-        `${source}:${entry.path}:${chunk.startLine}:${chunk.endLine}:${chunk.hash}:${item.index}`,
-      );
-      mapping.set(customId, { index: item.index, hash: chunk.hash });
-      requests.push({
-        custom_id: customId,
-        method: "POST",
-        url: OPENAI_BATCH_ENDPOINT,
-        body: {
-          model: this.openAi?.model ?? this.provider.model,
-          input: chunk.text,
-        },
-      });
-    }
-    const batchResult = await this.runBatchWithFallback({
-      provider: "openai",
-      run: async () =>
-        await runOpenAiEmbeddingBatches({
-          openAi,
-          agentId: this.agentId,
-          requests,
-          wait: this.batch.wait,
-          concurrency: this.batch.concurrency,
-          pollIntervalMs: this.batch.pollIntervalMs,
-          timeoutMs: this.batch.timeoutMs,
-          debug: (message, data) => log.debug(message, { ...data, source, chunks: chunks.length }),
-        }),
-      fallback: async () => await this.embedChunksInBatches(chunks),
-    });
-    if (Array.isArray(batchResult)) {
-      return batchResult;
-    }
-    const byCustomId = batchResult;
-
-    const toCache: Array<{ hash: string; embedding: number[] }> = [];
-    for (const [customId, embedding] of byCustomId.entries()) {
-      const mapped = mapping.get(customId);
-      if (!mapped) {
-        continue;
-      }
-      embeddings[mapped.index] = embedding;
-      toCache.push({ hash: mapped.hash, embedding });
-    }
-    this.upsertEmbeddingCache(toCache);
-    return embeddings;
-  }
-
-  private async embedChunksWithGeminiBatch(
-    chunks: MemoryChunk[],
-    entry: MemoryFileEntry | SessionFileEntry,
-    source: MemorySource,
-  ): Promise<number[][]> {
-    const gemini = this.gemini;
-    if (!gemini) {
-      return this.embedChunksInBatches(chunks);
-    }
-    if (chunks.length === 0) {
-      return [];
-    }
-    const cached = this.loadEmbeddingCache(chunks.map((chunk) => chunk.hash));
-    const embeddings: number[][] = Array.from({ length: chunks.length }, () => []);
-    const missing: Array<{ index: number; chunk: MemoryChunk }> = [];
-
-    for (let i = 0; i < chunks.length; i += 1) {
-      const chunk = chunks[i];
-      const hit = chunk?.hash ? cached.get(chunk.hash) : undefined;
-      if (hit && hit.length > 0) {
-        embeddings[i] = hit;
-      } else if (chunk) {
-        missing.push({ index: i, chunk });
-      }
-    }
-
-    if (missing.length === 0) {
-      return embeddings;
-    }
-
-    const requests: GeminiBatchRequest[] = [];
-    const mapping = new Map<string, { index: number; hash: string }>();
-    for (const item of missing) {
-      const chunk = item.chunk;
-      const customId = hashText(
-        `${source}:${entry.path}:${chunk.startLine}:${chunk.endLine}:${chunk.hash}:${item.index}`,
-      );
-      mapping.set(customId, { index: item.index, hash: chunk.hash });
-      requests.push({
-        custom_id: customId,
-        content: { parts: [{ text: chunk.text }] },
-        taskType: "RETRIEVAL_DOCUMENT",
-      });
-    }
-
-    const batchResult = await this.runBatchWithFallback({
-      provider: "gemini",
-      run: async () =>
-        await runGeminiEmbeddingBatches({
-          gemini,
-          agentId: this.agentId,
-          requests,
-          wait: this.batch.wait,
-          concurrency: this.batch.concurrency,
-          pollIntervalMs: this.batch.pollIntervalMs,
-          timeoutMs: this.batch.timeoutMs,
-          debug: (message, data) => log.debug(message, { ...data, source, chunks: chunks.length }),
-        }),
-      fallback: async () => await this.embedChunksInBatches(chunks),
-    });
-    if (Array.isArray(batchResult)) {
-      return batchResult;
-    }
-    const byCustomId = batchResult;
-
-    const toCache: Array<{ hash: string; embedding: number[] }> = [];
-    for (const [customId, embedding] of byCustomId.entries()) {
+    for (const [customId, embedding] of batchResult.entries()) {
       const mapped = mapping.get(customId);
       if (!mapped) {
         continue;

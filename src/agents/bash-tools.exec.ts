@@ -39,6 +39,7 @@ import {
   markExited,
   tail,
 } from "./bash-process-registry.js";
+import { requestExecApproval, DEFAULT_APPROVAL_TIMEOUT_MS } from "./bash-tools.approval.js";
 import {
   buildDockerExecArgs,
   buildSandboxEnv,
@@ -120,8 +121,6 @@ const DEFAULT_PENDING_MAX_OUTPUT = clampWithDefault(
 const DEFAULT_PATH =
   process.env.PATH ?? "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
 const DEFAULT_NOTIFY_TAIL_CHARS = 400;
-const DEFAULT_APPROVAL_TIMEOUT_MS = 120_000;
-const DEFAULT_APPROVAL_REQUEST_TIMEOUT_MS = 130_000;
 const DEFAULT_APPROVAL_RUNNING_NOTICE_MS = 10_000;
 const APPROVAL_SLUG_LENGTH = 8;
 
@@ -1131,59 +1130,21 @@ export function createExecTool(
           const warningText = warnings.length ? `${warnings.join("\n")}\n\n` : "";
 
           void (async () => {
-            let decision: string | null = null;
-            try {
-              const decisionResult = await callGatewayTool<{ decision: string }>(
-                "exec.approval.request",
-                { timeoutMs: DEFAULT_APPROVAL_REQUEST_TIMEOUT_MS },
-                {
-                  id: approvalId,
-                  command: commandText,
-                  cwd: workdir,
-                  host: "node",
-                  security: hostSecurity,
-                  ask: hostAsk,
-                  agentId,
-                  resolvedPath: undefined,
-                  sessionKey: defaults?.sessionKey,
-                  timeoutMs: DEFAULT_APPROVAL_TIMEOUT_MS,
-                },
-              );
-              const decisionValue =
-                decisionResult && typeof decisionResult === "object"
-                  ? (decisionResult as { decision?: unknown }).decision
-                  : undefined;
-              decision = typeof decisionValue === "string" ? decisionValue : null;
-            } catch {
-              emitExecSystemEvent(
-                `Exec denied (node=${nodeId} id=${approvalId}, approval-request-failed): ${commandText}`,
-                { sessionKey: notifySessionKey, contextKey },
-              );
-              return;
-            }
-
-            let approvedByAsk = false;
-            let approvalDecision: "allow-once" | "allow-always" | null = null;
-            let deniedReason: string | null = null;
-
-            if (decision === "deny") {
-              deniedReason = "user-denied";
-            } else if (!decision) {
-              if (askFallback === "full") {
-                approvedByAsk = true;
-                approvalDecision = "allow-once";
-              } else if (askFallback === "allowlist") {
-                // Defer allowlist enforcement to the node host.
-              } else {
-                deniedReason = "approval-timeout";
-              }
-            } else if (decision === "allow-once") {
-              approvedByAsk = true;
-              approvalDecision = "allow-once";
-            } else if (decision === "allow-always") {
-              approvedByAsk = true;
-              approvalDecision = "allow-always";
-            }
+            const approval = await requestExecApproval({
+              approvalId,
+              command: commandText,
+              cwd: workdir,
+              host: "node",
+              security: hostSecurity,
+              ask: hostAsk,
+              agentId,
+              resolvedPath: undefined,
+              sessionKey: defaults?.sessionKey,
+              askFallback,
+              analysisOk,
+              allowlistSatisfied: false,
+            });
+            const { approvedByAsk, approvalDecision, deniedReason } = approval;
 
             if (deniedReason) {
               emitExecSystemEvent(
@@ -1315,74 +1276,29 @@ export function createExecTool(
           const warningText = warnings.length ? `${warnings.join("\n")}\n\n` : "";
 
           void (async () => {
-            let decision: string | null = null;
-            try {
-              const decisionResult = await callGatewayTool<{ decision: string }>(
-                "exec.approval.request",
-                { timeoutMs: DEFAULT_APPROVAL_REQUEST_TIMEOUT_MS },
-                {
-                  id: approvalId,
-                  command: commandText,
-                  cwd: workdir,
-                  host: "gateway",
-                  security: hostSecurity,
-                  ask: hostAsk,
-                  agentId,
-                  resolvedPath,
-                  sessionKey: defaults?.sessionKey,
-                  timeoutMs: DEFAULT_APPROVAL_TIMEOUT_MS,
-                },
-              );
-              const decisionValue =
-                decisionResult && typeof decisionResult === "object"
-                  ? (decisionResult as { decision?: unknown }).decision
-                  : undefined;
-              decision = typeof decisionValue === "string" ? decisionValue : null;
-            } catch {
-              emitExecSystemEvent(
-                `Exec denied (gateway id=${approvalId}, approval-request-failed): ${commandText}`,
-                { sessionKey: notifySessionKey, contextKey },
-              );
-              return;
-            }
+            const approval = await requestExecApproval({
+              approvalId,
+              command: commandText,
+              cwd: workdir,
+              host: "gateway",
+              security: hostSecurity,
+              ask: hostAsk,
+              agentId,
+              resolvedPath,
+              sessionKey: defaults?.sessionKey,
+              askFallback,
+              analysisOk,
+              allowlistSatisfied,
+            });
+            const { approvalDecision, deniedReason } = approval;
 
-            let approvedByAsk = false;
-            let deniedReason: string | null = null;
-
-            if (decision === "deny") {
-              deniedReason = "user-denied";
-            } else if (!decision) {
-              if (askFallback === "full") {
-                approvedByAsk = true;
-              } else if (askFallback === "allowlist") {
-                if (!analysisOk || !allowlistSatisfied) {
-                  deniedReason = "approval-timeout (allowlist-miss)";
-                } else {
-                  approvedByAsk = true;
-                }
-              } else {
-                deniedReason = "approval-timeout";
-              }
-            } else if (decision === "allow-once") {
-              approvedByAsk = true;
-            } else if (decision === "allow-always") {
-              approvedByAsk = true;
-              if (hostSecurity === "allowlist") {
-                for (const segment of allowlistEval.segments) {
-                  const pattern = segment.resolution?.resolvedPath ?? "";
-                  if (pattern) {
-                    addAllowlistEntry(approvals.file, agentId, pattern);
-                  }
+            if (approvalDecision === "allow-always" && hostSecurity === "allowlist") {
+              for (const segment of allowlistEval.segments) {
+                const pattern = segment.resolution?.resolvedPath ?? "";
+                if (pattern) {
+                  addAllowlistEntry(approvals.file, agentId, pattern);
                 }
               }
-            }
-
-            if (
-              hostSecurity === "allowlist" &&
-              (!analysisOk || !allowlistSatisfied) &&
-              !approvedByAsk
-            ) {
-              deniedReason = deniedReason ?? "allowlist-miss";
             }
 
             if (deniedReason) {

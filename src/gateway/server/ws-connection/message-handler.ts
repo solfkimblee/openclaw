@@ -6,19 +6,7 @@ import type { ResolvedGatewayAuth } from "../../auth.js";
 import type { GatewayRequestContext, GatewayRequestHandlers } from "../../server-methods/types.js";
 import type { GatewayWsClient } from "../ws-types.js";
 import { loadConfig } from "../../../config/config.js";
-import {
-  deriveDeviceIdFromPublicKey,
-  normalizeDevicePublicKeyBase64Url,
-  verifyDeviceSignature,
-} from "../../../infra/device-identity.js";
-import {
-  approveDevicePairing,
-  ensureDeviceToken,
-  getPairedDevice,
-  requestDevicePairing,
-  updatePairedDeviceMetadata,
-  verifyDeviceToken,
-} from "../../../infra/device-pairing.js";
+import { ensureDeviceToken, verifyDeviceToken } from "../../../infra/device-pairing.js";
 import { updatePairedNodeMetadata } from "../../../infra/node-pairing.js";
 import { recordRemoteNodeInfo, refreshRemoteNodeBins } from "../../../infra/skills-remote.js";
 import { upsertPresence } from "../../../infra/system-presence.js";
@@ -26,7 +14,6 @@ import { loadVoiceWakeConfig } from "../../../infra/voicewake.js";
 import { rawDataToString } from "../../../infra/ws.js";
 import { isGatewayCliClient, isWebchatClient } from "../../../utils/message-channel.js";
 import { authorizeGatewayConnect, isLocalDirectRequest } from "../../auth.js";
-import { buildDeviceAuthPayload } from "../../device-auth.js";
 import { isLoopbackAddress, isTrustedProxyAddress, resolveGatewayClientIp } from "../../net.js";
 import { resolveNodeCommandAllowlist } from "../../node-command-policy.js";
 import { checkBrowserOrigin } from "../../origin-check.js";
@@ -53,10 +40,10 @@ import {
   incrementPresenceVersion,
   refreshGatewayHealthSnapshot,
 } from "../health-state.js";
+import { validateDeviceAuth } from "./ws-device-auth.js";
+import { checkDevicePairing } from "./ws-device-pairing.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
-
-const DEVICE_SIGNATURE_SKEW_MS = 10 * 60 * 1000;
 
 function resolveHostName(hostHeader?: string): string {
   const host = (hostHeader ?? "").trim().toLowerCase();
@@ -510,123 +497,20 @@ export function attachGatewayWsMessageHandler(params: {
           }
         }
         if (device) {
-          const derivedId = deriveDeviceIdFromPublicKey(device.publicKey);
-          if (!derivedId || derivedId !== device.id) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-id-mismatch",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device identity mismatch"),
-            });
-            close(1008, "device identity mismatch");
-            return;
-          }
-          const signedAt = device.signedAt;
-          if (
-            typeof signedAt !== "number" ||
-            Math.abs(Date.now() - signedAt) > DEVICE_SIGNATURE_SKEW_MS
-          ) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-signature-stale",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device signature expired"),
-            });
-            close(1008, "device signature expired");
-            return;
-          }
-          const nonceRequired = !isLocalClient;
-          const providedNonce = typeof device.nonce === "string" ? device.nonce.trim() : "";
-          if (nonceRequired && !providedNonce) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-nonce-missing",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device nonce required"),
-            });
-            close(1008, "device nonce required");
-            return;
-          }
-          if (providedNonce && providedNonce !== connectNonce) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-nonce-mismatch",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device nonce mismatch"),
-            });
-            close(1008, "device nonce mismatch");
-            return;
-          }
-          const payload = buildDeviceAuthPayload({
-            deviceId: device.id,
+          const deviceAuthResult = validateDeviceAuth({
+            device,
             clientId: connectParams.client.id,
             clientMode: connectParams.client.mode,
             role,
-            scopes: requestedScopes,
-            signedAtMs: signedAt,
-            token: connectParams.auth?.token ?? null,
-            nonce: providedNonce || undefined,
-            version: providedNonce ? "v2" : "v1",
+            requestedScopes,
+            authToken: connectParams.auth?.token ?? null,
+            connectNonce,
+            isLocalClient,
           });
-          const signatureOk = verifyDeviceSignature(device.publicKey, payload, device.signature);
-          const allowLegacy = !nonceRequired && !providedNonce;
-          if (!signatureOk && allowLegacy) {
-            const legacyPayload = buildDeviceAuthPayload({
-              deviceId: device.id,
-              clientId: connectParams.client.id,
-              clientMode: connectParams.client.mode,
-              role,
-              scopes: requestedScopes,
-              signedAtMs: signedAt,
-              token: connectParams.auth?.token ?? null,
-              version: "v1",
-            });
-            if (verifyDeviceSignature(device.publicKey, legacyPayload, device.signature)) {
-              // accepted legacy loopback signature
-            } else {
-              setHandshakeState("failed");
-              setCloseCause("device-auth-invalid", {
-                reason: "device-signature",
-                client: connectParams.client.id,
-                deviceId: device.id,
-              });
-              send({
-                type: "res",
-                id: frame.id,
-                ok: false,
-                error: errorShape(ErrorCodes.INVALID_REQUEST, "device signature invalid"),
-              });
-              close(1008, "device signature invalid");
-              return;
-            }
-          } else if (!signatureOk) {
+          if (!deviceAuthResult.ok) {
             setHandshakeState("failed");
             setCloseCause("device-auth-invalid", {
-              reason: "device-signature",
+              reason: deviceAuthResult.reason,
               client: connectParams.client.id,
               deviceId: device.id,
             });
@@ -634,28 +518,12 @@ export function attachGatewayWsMessageHandler(params: {
               type: "res",
               id: frame.id,
               ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device signature invalid"),
+              error: errorShape(ErrorCodes.INVALID_REQUEST, deviceAuthResult.errorMessage),
             });
-            close(1008, "device signature invalid");
+            close(1008, deviceAuthResult.errorMessage);
             return;
           }
-          devicePublicKey = normalizeDevicePublicKeyBase64Url(device.publicKey);
-          if (!devicePublicKey) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-public-key",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device public key invalid"),
-            });
-            close(1008, "device public key invalid");
-            return;
-          }
+          devicePublicKey = deviceAuthResult.publicKey;
         }
 
         if (!authOk && connectParams.auth?.token && device) {
@@ -677,112 +545,56 @@ export function attachGatewayWsMessageHandler(params: {
 
         const skipPairing = allowControlUiBypass && sharedAuthOk;
         if (device && devicePublicKey && !skipPairing) {
-          const requirePairing = async (reason: string, _paired?: { deviceId: string }) => {
-            const pairing = await requestDevicePairing({
-              deviceId: device.id,
-              publicKey: devicePublicKey,
-              displayName: connectParams.client.displayName,
-              platform: connectParams.client.platform,
-              clientId: connectParams.client.id,
-              clientMode: connectParams.client.mode,
-              role,
-              scopes,
-              remoteIp: reportedClientIp,
-              silent: isLocalClient,
-            });
+          const pairingResult = await checkDevicePairing({
+            deviceId: device.id,
+            devicePublicKey,
+            client: connectParams.client,
+            role,
+            scopes,
+            reportedClientIp,
+            isLocalClient,
+          });
+          if (!pairingResult.proceed) {
             const context = buildRequestContext();
-            if (pairing.request.silent === true) {
-              const approved = await approveDevicePairing(pairing.request.requestId);
-              if (approved) {
-                logGateway.info(
-                  `device pairing auto-approved device=${approved.device.deviceId} role=${approved.device.role ?? "unknown"}`,
-                );
-                context.broadcast(
-                  "device.pair.resolved",
-                  {
-                    requestId: pairing.request.requestId,
-                    deviceId: approved.device.deviceId,
-                    decision: "approved",
-                    ts: Date.now(),
-                  },
-                  { dropIfSlow: true },
-                );
-              }
-            } else if (pairing.created) {
-              context.broadcast("device.pair.requested", pairing.request, { dropIfSlow: true });
-            }
-            if (pairing.request.silent !== true) {
-              setHandshakeState("failed");
-              setCloseCause("pairing-required", {
-                deviceId: device.id,
-                requestId: pairing.request.requestId,
-                reason,
+            if (pairingResult.pairingRequest) {
+              context.broadcast("device.pair.requested", pairingResult.pairingRequest, {
+                dropIfSlow: true,
               });
-              send({
-                type: "res",
-                id: frame.id,
-                ok: false,
-                error: errorShape(ErrorCodes.NOT_PAIRED, "pairing required", {
-                  details: { requestId: pairing.request.requestId },
-                }),
-              });
-              close(1008, "pairing required");
-              return false;
             }
-            return true;
-          };
-
-          const paired = await getPairedDevice(device.id);
-          const isPaired = paired?.publicKey === devicePublicKey;
-          if (!isPaired) {
-            const ok = await requirePairing("not-paired");
-            if (!ok) {
-              return;
-            }
-          } else {
-            const allowedRoles = new Set(
-              Array.isArray(paired.roles) ? paired.roles : paired.role ? [paired.role] : [],
-            );
-            if (allowedRoles.size === 0) {
-              const ok = await requirePairing("role-upgrade", paired);
-              if (!ok) {
-                return;
-              }
-            } else if (!allowedRoles.has(role)) {
-              const ok = await requirePairing("role-upgrade", paired);
-              if (!ok) {
-                return;
-              }
-            }
-
-            const pairedScopes = Array.isArray(paired.scopes) ? paired.scopes : [];
-            if (scopes.length > 0) {
-              if (pairedScopes.length === 0) {
-                const ok = await requirePairing("scope-upgrade", paired);
-                if (!ok) {
-                  return;
-                }
-              } else {
-                const allowedScopes = new Set(pairedScopes);
-                const missingScope = scopes.find((scope) => !allowedScopes.has(scope));
-                if (missingScope) {
-                  const ok = await requirePairing("scope-upgrade", paired);
-                  if (!ok) {
-                    return;
-                  }
-                }
-              }
-            }
-
-            await updatePairedDeviceMetadata(device.id, {
-              displayName: connectParams.client.displayName,
-              platform: connectParams.client.platform,
-              clientId: connectParams.client.id,
-              clientMode: connectParams.client.mode,
-              role,
-              scopes,
-              remoteIp: reportedClientIp,
+            setHandshakeState("failed");
+            setCloseCause("pairing-required", {
+              deviceId: device.id,
+              requestId: pairingResult.requestId,
+              reason: pairingResult.reason,
             });
+            send({
+              type: "res",
+              id: frame.id,
+              ok: false,
+              error: errorShape(ErrorCodes.NOT_PAIRED, "pairing required", {
+                details: { requestId: pairingResult.requestId },
+              }),
+            });
+            close(1008, "pairing required");
+            return;
+          }
+          if (pairingResult.autoApprovals.length > 0) {
+            const context = buildRequestContext();
+            for (const approval of pairingResult.autoApprovals) {
+              logGateway.info(
+                `device pairing auto-approved device=${approval.deviceId} role=${approval.role ?? "unknown"}`,
+              );
+              context.broadcast(
+                "device.pair.resolved",
+                {
+                  requestId: approval.requestId,
+                  deviceId: approval.deviceId,
+                  decision: "approved",
+                  ts: Date.now(),
+                },
+                { dropIfSlow: true },
+              );
+            }
           }
         }
 
