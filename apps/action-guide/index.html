@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>30天行动指南</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#2563eb;--primary-light:#dbeafe;--success:#16a34a;--success-light:#dcfce7;--warning:#d97706;--warning-light:#fef3c7;--danger:#dc2626;--danger-light:#fee2e2;--bg:#f8fafc;--card:#fff;--text:#1e293b;--text-secondary:#64748b;--border:#e2e8f0;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.app{display:flex;min-height:100vh}
+.sidebar{width:280px;background:var(--card);border-right:1px solid var(--border);padding:20px 0;overflow-y:auto;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s}
+.sidebar-header{padding:0 20px 20px;border-bottom:1px solid var(--border)}
+.sidebar-header h2{font-size:18px;color:var(--primary)}
+.sidebar-header .progress-bar{margin-top:12px;background:var(--border);border-radius:10px;height:8px;overflow:hidden}
+.sidebar-header .progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:10px;transition:width .5s}
+.sidebar-header .progress-text{font-size:12px;color:var(--text-secondary);margin-top:4px}
+.nav-group{padding:12px 0}
+.nav-group-title{padding:4px 20px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px;cursor:pointer;transition:background .2s;font-size:14px;border:none;background:none;width:100%;text-align:left;color:var(--text)}
+.nav-item:hover{background:var(--primary-light)}
+.nav-item.active{background:var(--primary-light);color:var(--primary);font-weight:600}
+.nav-item .day-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;background:var(--border);color:var(--text-secondary);flex-shrink:0}
+.nav-item.active .day-num{background:var(--primary);color:#fff}
+.nav-item.completed .day-num{background:var(--success);color:#fff}
+.nav-item .day-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-item .check-icon{color:var(--success);font-size:16px}
+.main{flex:1;margin-left:280px;padding:24px;max-width:800px}
+.mobile-header{display:none;position:fixed;top:0;left:0;right:0;background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;z-index:90;align-items:center;gap:12px}
+.hamburger{background:none;border:none;font-size:24px;cursor:pointer;padding:4px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px}
+.card h2{font-size:20px;margin-bottom:16px;color:var(--text)}
+.card h3{font-size:16px;margin:16px 0 8px;color:var(--text)}
+.card p,.card li{font-size:14px;color:var(--text-secondary);margin-bottom:8px}
+.card ul,.card ol{padding-left:20px}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;transition:all .2s}
+.task-item:hover{border-color:var(--primary)}
+.task-item.checked{background:var(--success-light);border-color:var(--success)}
+.task-item input[type="checkbox"]{width:20px;height:20px;margin-top:2px;cursor:pointer;accent-color:var(--success);flex-shrink:0}
+.task-item label{cursor:pointer;flex:1;font-size:14px}
+.input-group{margin-bottom:16px}
+.input-group label{display:block;font-size:14px;font-weight:500;margin-bottom:6px;color:var(--text)}
+.input-group textarea,.input-group input[type="text"],.input-group input[type="number"]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;transition:border-color .2s;background:var(--bg)}
+.input-group textarea:focus,.input-group input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
+.input-group textarea{min-height:60px;resize:vertical}
+.radio-group{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.radio-option{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;font-size:14px}
+.radio-option:hover{border-color:var(--primary)}
+.radio-option.selected{background:var(--primary-light);border-color:var(--primary)}
+.radio-option input[type="radio"]{accent-color:var(--primary);width:16px;height:16px}
+.result-box{padding:16px;border-radius:8px;margin:16px 0;font-size:14px}
+.result-box.safe{background:var(--success-light);border-left:4px solid var(--success)}
+.result-box.warning{background:var(--warning-light);border-left:4px solid var(--warning)}
+.result-box.danger{background:var(--danger-light);border-left:4px solid var(--danger)}
+.result-box.info{background:var(--primary-light);border-left:4px solid var(--primary)}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600}
+.badge.safe{background:var(--success-light);color:var(--success)}
+.badge.warning{background:var(--warning-light);color:var(--warning)}
+.badge.danger{background:var(--danger-light);color:var(--danger)}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+th,td{padding:8px 12px;border:1px solid var(--border);text-align:left}
+th{background:var(--bg);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#15803d}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--bg)}
+.day-nav{display:flex;justify-content:space-between;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+.section-divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.highlight{background:linear-gradient(120deg,var(--warning-light) 0%,var(--warning-light) 100%);padding:2px 4px;border-radius:4px}
+.emoji-indicator{font-size:16px}
+.week-header{text-align:center;padding:20px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border-radius:var(--radius);margin-bottom:20px}
+.week-header h1{font-size:24px;margin-bottom:4px}
+.week-header p{opacity:.85;font-size:14px}
+.template-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin:12px 0;font-size:13px;white-space:pre-wrap;font-family:inherit;position:relative}
+.template-box .copy-btn{position:absolute;top:8px;right:8px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.summary-card{padding:16px;border-radius:8px;border:1px solid var(--border)}
+.summary-card h4{font-size:13px;color:var(--text-secondary);margin-bottom:4px}
+.summary-card .value{font-size:24px;font-weight:700}
+.final-message{text-align:center;padding:40px 20px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-radius:var(--radius);margin:20px 0}
+.final-message h2{color:var(--primary);margin-bottom:16px}
+.final-message p{color:var(--text-secondary);max-width:500px;margin:8px auto}
+@media(max-width:768px){
+.sidebar{transform:translateX(-100%)}
+.sidebar.open{transform:translateX(0)}
+.main{margin-left:0;padding:16px;padding-top:60px}
+.mobile-header{display:flex}
+.overlay.show{display:block}
+.summary-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+<div class="mobile-header" id="mobileHeader">
+<button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+<span style="font-weight:600">30天行动指南</span>
+</div>
+<nav class="sidebar" id="sidebar"></nav>
+<main class="main" id="content"></main>
+</div>
+<script>
+// ========== DATA STORE ==========
+const STORAGE_KEY = 'action_guide_30days';
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function getData(key, fallback) { const d = loadData(); return d[key] !== undefined ? d[key] : fallback; }
+function setData(key, value) { const d = loadData(); d[key] = value; saveData(d); }
+
+let currentDay = getData('currentDay', 1);
+
+// ========== DAY DEFINITIONS ==========
+const days = [
+  {day:1, title:'热爱测试 + 倦怠检测 + 文化匹配', week:'第1天', tasks:3, time:'30分钟'},
+  {day:2, title:'建立工作时长追踪', week:'第2-7天', tasks:1, time:'5分钟'},
+  {day:3, title:'设定"够了"阈值', week:'第2-7天', tasks:1, time:'10分钟'},
+  {day:4, title:'找到你的"热爱信号"', week:'第2-7天', tasks:1, time:'15分钟'},
+  {day:5, title:'创建"独特价值"清单', week:'第2-7天', tasks:1, time:'10分钟'},
+  {day:6, title:'周末强制休息测试', week:'第2-7天', tasks:1, time:'全天'},
+  {day:7, title:'第一周总结', week:'第2-7天', tasks:1, time:'15分钟'},
+  {day:8, title:'竞争维度转换', week:'第8-14天', tasks:1, time:'10分钟'},
+  {day:9, title:'时间审计', week:'第8-14天', tasks:1, time:'20分钟'},
+  {day:10, title:'建立"拒绝"话术', week:'第8-14天', tasks:1, time:'10分钟'},
+  {day:11, title:'设定"完美主义熔断器"', week:'第8-14天', tasks:1, time:'15分钟'},
+  {day:12, title:'找到你的"能量源"', week:'第8-14天', tasks:1, time:'10分钟'},
+  {day:13, title:'建立"每日收盘"仪式', week:'第8-14天', tasks:1, time:'5分钟/天'},
+  {day:14, title:'第二周总结+调整', week:'第8-14天', tasks:1, time:'20分钟'},
+  {day:15, title:'文化匹配深度测试', week:'第15-21天', tasks:1, time:'30分钟'},
+  {day:16, title:'准备面试问题', week:'第15-21天', tasks:1, time:'15分钟'},
+  {day:17, title:'投递简历（外企1）', week:'第15-21天', tasks:1, time:'30分钟'},
+  {day:18, title:'投递简历（外企2）', week:'第15-21天', tasks:1, time:'30分钟'},
+  {day:19, title:'投递简历（大厂1）', week:'第15-21天', tasks:1, time:'30分钟'},
+  {day:20, title:'投递简历（大厂2）', week:'第15-21天', tasks:1, time:'30分钟'},
+  {day:21, title:'第三周总结', week:'第15-21天', tasks:1, time:'15分钟'},
+  {day:22, title:'3年后的你', week:'第22-28天', tasks:1, time:'15分钟'},
+  {day:23, title:'找到你的"导师"', week:'第22-28天', tasks:1, time:'20分钟'},
+  {day:24, title:'建立"学习地图"', week:'第22-28天', tasks:1, time:'20分钟'},
+  {day:25, title:'删除"假学习"', week:'第22-28天', tasks:1, time:'10分钟'},
+  {day:26, title:'建立"输出倒逼输入"', week:'第22-28天', tasks:1, time:'15分钟'},
+  {day:27, title:'建立"能量账户"', week:'第22-28天', tasks:1, time:'10分钟'},
+  {day:28, title:'第四周总结', week:'第22-28天', tasks:1, time:'30分钟'},
+  {day:29, title:'最后准备 - 数据汇总', week:'第29-30天', tasks:1, time:'60分钟'},
+  {day:30, title:'最终决策日', week:'第29-30天', tasks:1, time:'90分钟'},
+];
+
+const weekGroups = [
+  {label:'启动日', range:[1,1]},
+  {label:'第一周 · 诊断', range:[2,7]},
+  {label:'第二周 · 优化', range:[8,14]},
+  {label:'第三周 · 验证', range:[15,21]},
+  {label:'第四周 · 方向', range:[22,28]},
+  {label:'最终决策', range:[29,30]},
+];
+
+// ========== SIDEBAR ==========
+function renderSidebar() {
+  const sb = document.getElementById('sidebar');
+  const completedDays = days.filter(d => getData('day_'+d.day+'_completed', false)).length;
+  const pct = Math.round(completedDays / 30 * 100);
+  let html = `<div class="sidebar-header">
+    <h2>30天行动指南</h2>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="progress-text">已完成 ${completedDays}/30 天 (${pct}%)</div>
+  </div>`;
+  weekGroups.forEach(g => {
+    html += `<div class="nav-group"><div class="nav-group-title">${g.label}</div>`;
+    for (let i = g.range[0]; i <= g.range[1]; i++) {
+      const d = days[i-1];
+      const completed = getData('day_'+d.day+'_completed', false);
+      const cls = (d.day === currentDay ? ' active' : '') + (completed ? ' completed' : '');
+      html += `<button class="nav-item${cls}" onclick="goToDay(${d.day})">
+        <span class="day-num">${d.day}</span>
+        <span class="day-label">${d.title}</span>
+        ${completed ? '<span class="check-icon">&#10003;</span>' : ''}
+      </button>`;
+    }
+    html += '</div>';
+  });
+  sb.innerHTML = html;
+}
+
+function goToDay(day) {
+  currentDay = day;
+  setData('currentDay', day);
+  renderSidebar();
+  renderContent();
+  toggleSidebar(false);
+  window.scrollTo(0, 0);
+}
+
+function toggleSidebar(force) {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('overlay');
+  const open = force !== undefined ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  ov.classList.toggle('show', open);
+}
+
+// ========== HELPER RENDERERS ==========
+function checkbox(id, label) {
+  const checked = getData(id, false);
+  return `<div class="task-item${checked?' checked':''}" onclick="toggleCheck('${id}',this)">
+    <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleCheck('${id}',this.parentNode)">
+    <label>${label}</label></div>`;
+}
+
+function toggleCheck(id, el) {
+  const val = !getData(id, false);
+  setData(id, val);
+  const cb = el.querySelector('input[type=checkbox]');
+  cb.checked = val;
+  el.classList.toggle('checked', val);
+  updateDayCompletion();
+  renderSidebar();
+}
+
+function textInput(id, label, placeholder, multiline) {
+  const val = getData(id, '');
+  if (multiline) {
+    return `<div class="input-group"><label>${label}</label>
+      <textarea placeholder="${placeholder||''}" oninput="setData('${id}',this.value)">${val}</textarea></div>`;
+  }
+  return `<div class="input-group"><label>${label}</label>
+    <input type="text" value="${val.replace(/"/g,'&quot;')}" placeholder="${placeholder||''}" oninput="setData('${id}',this.value)"></div>`;
+}
+
+function numInput(id, label, placeholder) {
+  const val = getData(id, '');
+  return `<div class="input-group"><label>${label}</label>
+    <input type="number" value="${val}" placeholder="${placeholder||''}" oninput="setData('${id}',this.value)"></div>`;
+}
+
+function radioGroup(id, label, options) {
+  const val = getData(id, '');
+  let html = `<div class="input-group"><label style="font-weight:600;margin-bottom:8px">${label}</label><div class="radio-group">`;
+  options.forEach((opt, i) => {
+    const selected = val === opt.value;
+    html += `<label class="radio-option${selected?' selected':''}" onclick="selectRadio('${id}','${opt.value}',this)">
+      <input type="radio" name="${id}" value="${opt.value}" ${selected?'checked':''}>
+      <span>${opt.label}</span></label>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function selectRadio(id, value, el) {
+  setData(id, value);
+  const parent = el.parentNode;
+  parent.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input').checked = true;
+  // Re-render to update dynamic results
+  renderContent();
+}
+
+function resultBox(type, content) {
+  return `<div class="result-box ${type}">${content}</div>`;
+}
+
+function templateBox(text) {
+  return `<div class="template-box"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentNode.textContent.replace('复制','').trim())">复制</button>${text}</div>`;
+}
+
+function markDayComplete(day) {
+  setData('day_'+day+'_completed', true);
+  renderSidebar();
+  renderContent();
+}
+
+function updateDayCompletion() {
+  // Auto-completion logic can be added per day
+}
+
+function dayNav() {
+  let html = '<div class="day-nav">';
+  if (currentDay > 1) html += `<button class="btn btn-outline" onclick="goToDay(${currentDay-1})">&larr; 第${currentDay-1}天</button>`;
+  else html += '<span></span>';
+  html += `<button class="btn btn-success" onclick="markDayComplete(${currentDay})">&#10003; 标记完成</button>`;
+  if (currentDay < 30) html += `<button class="btn btn-primary" onclick="goToDay(${currentDay+1})">第${currentDay+1}天 &rarr;</button>`;
+  else html += '<span></span>';
+  html += '</div>';
+  return html;
+}
+// ========== DAY CONTENT RENDERERS ==========
+function renderDay1() {
+  let html = `<div class="week-header"><h1>第1天</h1><p>3个任务，共30分钟 · 今天就开始，不要等</p></div>`;
+
+  // Task 1: 热爱测试
+  html += `<div class="card"><h2>任务1：热爱测试（10分钟）</h2>
+    <p style="color:var(--primary);font-weight:600;margin-bottom:16px">现在就做，不要等。回答这5个问题：</p>
+    ${textInput('d1_q1','1. 过去1年，我在周末会主动想哪些工作内容？','写下你的答案...',true)}
+    ${textInput('d1_q2','2. 过去1年，哪个项目我做到凌晨还不觉得累？','写下你的答案...',true)}
+    ${textInput('d1_q3','3. 过去1年，哪个话题我可以跟人聊1小时不无聊？','写下你的答案...',true)}
+    ${textInput('d1_q4','4. 如果明天开始没有工资，我还会继续做什么？','写下你的答案...',true)}
+    ${textInput('d1_q5','5. 我现在正在做的工作是：','写下你的答案...',true)}
+    <h3>立即判断：</h3>
+    ${radioGroup('d1_direction','问题1-4的答案，跟问题5的关系：',[
+      {value:'match',label:'✅ 相关 → 继续当前方向'},
+      {value:'mismatch',label:'🛑 完全无关 → 方向错了，需要调整'}
+    ])}`;
+  if (getData('d1_direction','') === 'mismatch') {
+    html += resultBox('danger','<strong>方向需要调整！</strong>请设定调整期限：') +
+      textInput('d1_deadline','调整期限（年-月-日）','例如：2026-06-01') +
+      checkbox('d1_calendar','已把调整日期写在手机日历里，设置了提醒');
+  }
+  html += '</div>';
+
+  // Task 2: 倦怠检测
+  html += `<div class="card"><h2>任务2：倦怠风险检测（10分钟）</h2>
+    ${numInput('d1_hours','1. 过去1个月，我平均每周工作多少小时？','例如：55')}
+    ${numInput('d1_anxiety','2. 过去1个月，因为"没赢过别人"而焦虑的次数？','例如：8')}
+    ${numInput('d1_compare','3. 过去1个月，想"今年要超过去年"的次数？','例如：5')}
+    ${numInput('d1_sustain','4. 当前工作节奏能持续多少年？（诚实回答）','例如：2')}`;
+
+  const hours = parseInt(getData('d1_hours','')) || 0;
+  const anxiety = parseInt(getData('d1_anxiety','')) || 0;
+  const sustain = parseInt(getData('d1_sustain','')) || 0;
+
+  if (hours || anxiety || sustain) {
+    html += '<h3>诊断结果：</h3><table><tr><th>指标</th><th>你的数值</th><th>风险等级</th><th>建议</th></tr>';
+    if (hours) {
+      const hRisk = hours < 60 ? 'safe' : hours <= 70 ? 'warning' : 'danger';
+      const hAdvice = hours < 60 ? '保持' : hours <= 70 ? '下周减少到60h' : '明天开始拒绝新任务';
+      html += `<tr><td>工作时长</td><td>${hours}h/周</td><td><span class="badge ${hRisk}">${hRisk==='safe'?'✅安全':hRisk==='warning'?'⚠️警告':'🛑危险'}</span></td><td>${hAdvice}</td></tr>`;
+    }
+    if (anxiety) {
+      const aRisk = anxiety < 5 ? 'safe' : anxiety <= 15 ? 'warning' : 'danger';
+      const aAdvice = anxiety < 5 ? '保持' : anxiety <= 15 ? '继续监测' : '本周预约心理咨询';
+      html += `<tr><td>焦虑频率</td><td>${anxiety}次/月</td><td><span class="badge ${aRisk}">${aRisk==='safe'?'✅安全':aRisk==='warning'?'⚠️警告':'🛑危险'}</span></td><td>${aAdvice}</td></tr>`;
+    }
+    if (sustain) {
+      const sRisk = sustain > 3 ? 'safe' : sustain >= 1 ? 'warning' : 'danger';
+      const sAdvice = sustain > 3 ? '保持' : sustain >= 1 ? '需要优化节奏' : '立即降低强度';
+      html += `<tr><td>可持续性</td><td>${sustain}年</td><td><span class="badge ${sRisk}">${sRisk==='safe'?'✅安全':sRisk==='warning'?'⚠️警告':'🛑危险'}</span></td><td>${sAdvice}</td></tr>`;
+    }
+    html += '</table>';
+
+    const hasDanger = (hours > 70) || (anxiety > 15) || (sustain < 1);
+    if (hasDanger) {
+      html += resultBox('danger','<strong>检测到危险信号！</strong>请立即执行以下行动：');
+      html += checkbox('d1_limit10h','明天开始：每天工作不超过10小时（强制执行）');
+      html += checkbox('d1_talk_leader','本周内：找leader说"我需要调整工作节奏"');
+      html += checkbox('d1_plan_b','如果leader不支持，在第30天做决定：换团队或换公司');
+    }
+  }
+  html += '</div>';
+
+  // Task 3: 文化匹配
+  html += `<div class="card"><h2>任务3：文化匹配快检（10分钟）</h2>
+    <p>回答这5个问题（选择最接近的答案）：</p>
+    ${radioGroup('d1_c1','1. 在当前团队，我的"竞争性格"（喜欢比较、要赢）：',[
+      {value:'A',label:'A. 被鼓励（大家都这样，领导欣赏）'},
+      {value:'B',label:'B. 被接受但需要低调'},
+      {value:'C',label:'C. 被警惕（被认为"太aggressive"）'}
+    ])}
+    ${radioGroup('d1_c2','2. 我提出"我认为更好的方案"时：',[
+      {value:'A',label:'A. 被重用（方案好会被采纳）'},
+      {value:'B',label:'B. 被接受（会听但不一定采纳）'},
+      {value:'C',label:'C. 被认为"太自我"'}
+    ])}
+    ${radioGroup('d1_c3','3. 我的"高成就需求"（主动加班、追求完美）：',[
+      {value:'A',label:'A. 被欣赏（被认为"有上进心"）'},
+      {value:'B',label:'B. 被接受（中性态度）'},
+      {value:'C',label:'C. 给团队压力（被认为"太卷"）'}
+    ])}
+    ${radioGroup('d1_c4','4. 当前团队的绩效考核：',[
+      {value:'A',label:'A. 主要看个人KPI'},
+      {value:'B',label:'B. 个人KPI + 团队表现'},
+      {value:'C',label:'C. 主要看团队整体表现'}
+    ])}
+    ${radioGroup('d1_c5','5. 当前团队的薪酬差异：',[
+      {value:'A',label:'A. 贡献大的人明显拿得多'},
+      {value:'B',label:'B. 有差异但不大'},
+      {value:'C',label:'C. 基本差不多（为了"团队和谐"）'}
+    ])}`;
+
+  const cCount = ['d1_c1','d1_c2','d1_c3','d1_c4','d1_c5'].filter(k => getData(k,'') === 'C').length;
+  const answered = ['d1_c1','d1_c2','d1_c3','d1_c4','d1_c5'].filter(k => getData(k,'')).length;
+  if (answered >= 3) {
+    const cType = cCount <= 1 ? 'safe' : cCount === 2 ? 'warning' : 'danger';
+    const cMsg = cCount <= 1 ? '✅ 文化匹配，留下' : cCount === 2 ? '⚠️ 低匹配，观察3个月' : '🛑 不匹配，准备离开';
+    html += resultBox(cType, `<strong>C的个数：${cCount}个 → ${cMsg}</strong>`);
+    if (cCount >= 3) {
+      html += `<p style="font-weight:600;margin:12px 0">如果≥3个C，现在做：</p>`;
+      html += checkbox('d1_open_jobs','打开招聘网站（Boss直聘/拉勾/LinkedIn）');
+      html += checkbox('d1_search_jobs','搜索"外企"或"互联网大厂"的职位');
+      html += checkbox('d1_apply_3','投递至少3个简历');
+      html += checkbox('d1_target_5','设定目标：第30天之前至少面试5家公司');
+    }
+  }
+  html += '</div>';
+  return html;
+}
+function renderDay2() {
+  return `<div class="week-header"><h1>第2天</h1><p>建立工作时长追踪 · 5分钟</p></div>
+  <div class="card"><h2>创建工作时长追踪表</h2>
+    <p>从今天开始，每天下班前记录工作时长。</p>
+    <h3>本周记录：</h3>
+    <table><tr><th>日期</th><th>开始时间</th><th>结束时间</th><th>总时长</th></tr>
+    ${[1,2,3,4,5,6,7].map(i => `<tr>
+      <td><input type="text" style="width:80px;padding:4px;border:1px solid var(--border);border-radius:4px" value="${getData('d2_date_'+i,'')}" oninput="setData('d2_date_${i}',this.value)" placeholder="月/日"></td>
+      <td><input type="text" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:4px" value="${getData('d2_start_'+i,'')}" oninput="setData('d2_start_${i}',this.value)" placeholder="9:00"></td>
+      <td><input type="text" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:4px" value="${getData('d2_end_'+i,'')}" oninput="setData('d2_end_${i}',this.value)" placeholder="19:00"></td>
+      <td><input type="text" style="width:50px;padding:4px;border:1px solid var(--border);border-radius:4px" value="${getData('d2_total_'+i,'')}" oninput="setData('d2_total_${i}',this.value)" placeholder="10h"></td>
+    </tr>`).join('')}
+    </table>
+    ${numInput('d2_week_total','周累计（小时）：','例如：55')}
+    ${resultBox('info','<strong>规则：</strong><br>• 每天下班前填写<br>• 周日晚上算周累计<br>• 如果周累计>70小时，下周强制减少到60小时')}
+    ${checkbox('d2_done','我已经建立了工作时长追踪表')}
+  </div>`;
+}
+
+function renderDay3() {
+  return `<div class="week-header"><h1>第3天</h1><p>设定"够了"阈值 · 10分钟</p></div>
+  <div class="card"><h2>我的"够了"标准</h2>
+    <p>填写这张表，然后截图保存到手机：</p>
+    ${textInput('d3_hours','工作时长：每周不超过多少小时？','建议：60小时')}
+    ${textInput('d3_quality','项目质量：多少分就提交？','建议：85分，不追求完美')}
+    ${textInput('d3_compare','竞争目标：我不跟谁比较？','建议：不跟同事比工作时长')}
+    ${textInput('d3_achieve','成就标准：今年我只要达到什么就满意？','具体写，比如"升P7"或"学会XX技能"')}
+    <hr class="section-divider">
+    <h3>执行检查：</h3>
+    ${checkbox('d3_screenshot','截图保存到手机')}
+    ${checkbox('d3_weekly','每周日晚上看一次（设置日历提醒）')}
+    ${checkbox('d3_remind','每次想"再多做一点"时，看一次')}
+  </div>`;
+}
+
+function renderDay4() {
+  return `<div class="week-header"><h1>第4天</h1><p>找到你的"热爱信号" · 15分钟</p></div>
+  <div class="card"><h2>回顾过去3个月</h2>
+    <h3>让我兴奋的时刻（做什么时感觉"爽"）：</h3>
+    ${textInput('d4_ex1','1.','',true)}
+    ${textInput('d4_ex2','2.','',true)}
+    ${textInput('d4_ex3','3.','',true)}
+    <h3>让我厌烦的时刻（做什么时感觉"烦"）：</h3>
+    ${textInput('d4_bo1','1.','',true)}
+    ${textInput('d4_bo2','2.','',true)}
+    ${textInput('d4_bo3','3.','',true)}
+    <hr class="section-divider">
+    <h3>立即行动：</h3>
+    ${checkbox('d4_take_exciting','下周主动要1个"兴奋清单"里的任务')}
+    ${checkbox('d4_drop_boring','下周推掉1个"厌烦清单"里的任务')}
+  </div>`;
+}
+
+function renderDay5() {
+  return `<div class="week-header"><h1>第5天</h1><p>创建"独特价值"清单 · 10分钟</p></div>
+  <div class="card"><h2>过去1个月，我做的工作中：</h2>
+    ${textInput('d5_q1','1. 哪件事是"只有我能做到这个程度"的？','认真想想...',true)}
+    ${textInput('d5_q2','2. 哪件事如果我离职，会没人接手或质量下降？','',true)}
+    ${textInput('d5_q3','3. 哪件事用户/客户/同事会记住是我做的？','',true)}`;
+  const allEmpty = !getData('d5_q1','') && !getData('d5_q2','') && !getData('d5_q3','');
+  let extra = '';
+  if (allEmpty) {
+    extra = resultBox('danger','<strong>🛑 警告：</strong>如果3个问题都写不出答案，说明你在做"任何人都能做"的工作。<br><strong>立即行动：</strong>第6天开始主动要一个"别人做不了"的任务。');
+  }
+  return extra + `${checkbox('d5_action','我已经计划主动要一个有独特价值的任务')}</div>`;
+}
+
+function renderDay6() {
+  return `<div class="week-header"><h1>第6天</h1><p>周末强制休息测试 · 全天</p></div>
+  <div class="card"><h2>今天的任务很简单</h2>
+    ${resultBox('info','今天要做的就是：<strong>完全不工作</strong>')}
+    ${checkbox('d6_close_apps','关闭企业微信/钉钉/Slack（或删除手机App）')}
+    ${checkbox('d6_no_email','不看工作邮件')}
+    ${checkbox('d6_no_think','不想工作的事')}
+    ${checkbox('d6_log_thoughts','如果工作的事主动跳进脑海，记录但不处理')}
+    ${textInput('d6_thoughts','记录跳进脑海的工作想法：','如果有的话...',true)}
+    <hr class="section-divider">
+    <h3>周日晚上评估：</h3>
+    ${radioGroup('d6_result','我做到了吗？',[
+      {value:'full',label:'✅ 完全做到 → 你有自控力'},
+      {value:'partial',label:'⚠️ 部分做到（看了几次消息但没处理）→ 需要强化'},
+      {value:'failed',label:'🛑 完全做不到 → 危险：你已经"工作上瘾"'}
+    ])}`;
+  let extra = '';
+  if (getData('d6_result','') === 'failed') {
+    extra = resultBox('danger','下个周末再试一次。如果连续3个周末都做不到 → 你需要外部帮助（心理咨询）');
+  }
+  return extra + '</div>';
+}
+
+function renderDay7() {
+  const hours = getData('d1_hours','?');
+  const cCount = ['d1_c1','d1_c2','d1_c3','d1_c4','d1_c5'].filter(k => getData(k,'') === 'C').length;
+  return `<div class="week-header"><h1>第7天</h1><p>第一周总结 · 15分钟</p></div>
+  <div class="card"><h2>回顾第1-6天</h2>
+    ${radioGroup('d7_direction','1. 我的方向对吗？（第1天结果）',[
+      {value:'yes',label:'对，继续'},
+      {value:'no',label:'不对，需要调整'}
+    ])}
+    ${numInput('d7_hours','2. 本周工作时长（小时）：','例如：55')}
+    ${radioGroup('d7_culture','3. 我的文化匹配吗？（第1天C的数量：'+cCount+'个）',[
+      {value:'match',label:'匹配（0-1个C）'},
+      {value:'low',label:'低匹配（2个C）'},
+      {value:'mismatch',label:'不匹配（≥3个C）'}
+    ])}
+    ${textInput('d7_value','4. 我这周创造了什么独特价值？','',true)}
+    ${radioGroup('d7_rest','5. 我这周末休息了吗？',[
+      {value:'yes',label:'是'},
+      {value:'no',label:'否'}
+    ])}
+    <hr class="section-divider">
+    <h3>根据结果决定下周重点：</h3>
+    ${checkbox('d7_resume','如果方向不对 → 下周开始每天投2份简历')}
+    ${checkbox('d7_leave_early','如果工作时长>70h → 下周强制每天7点下班')}
+    ${checkbox('d7_interview','如果文化不匹配 → 下周开始准备面试')}
+    ${checkbox('d7_challenge','如果没有独特价值 → 下周主动要有挑战的任务')}
+    ${checkbox('d7_rest_plan','如果周末没休息 → 下周末强制休息')}
+  </div>`;
+}
+function renderDay8() {
+  return `<div class="week-header"><h1>第8天</h1><p>竞争维度转换 · 10分钟</p></div>
+  <div class="card"><h2>改变你的"比较对象"</h2>
+    <h3>旧的比较（停止这样想）：</h3>
+    ${resultBox('danger','❌ "我比XX做得怎么样？"<br>❌ "我今年比去年进步了吗？"<br>❌ "我的职级比同期高吗？"')}
+    <h3>新的比较（开始这样想）：</h3>
+    ${resultBox('safe','✅ "我这周创造了什么独特价值？"<br>✅ "我这周学到了什么5年后还有用的能力？"<br>✅ "我这周影响了多少人？"')}
+    <hr class="section-divider">
+    <h3>具体执行：</h3>
+    ${checkbox('d8_sticky','把"新的比较"三个问题写在便签纸上')}
+    ${checkbox('d8_paste','贴在电脑屏幕边上')}
+    ${checkbox('d8_practice','每次想"我比XX怎么样"时，看一眼便签')}
+    <h3>本周练习记录：</h3>
+    ${textInput('d8_value','这周我创造了什么独特价值？','',true)}
+    ${textInput('d8_skill','这周我学到了什么5年后还有用的能力？','',true)}
+    ${textInput('d8_impact','这周我影响了多少人？','',true)}
+  </div>`;
+}
+
+function renderDay9() {
+  return `<div class="week-header"><h1>第9天</h1><p>时间审计 · 20分钟</p></div>
+  <div class="card"><h2>回顾昨天的所有工作</h2>
+    <h3>1. 会议</h3>
+    ${numInput('d9_meeting_total','会议总时长（小时）：','例如：3')}
+    ${numInput('d9_meeting_value','其中有价值的（小时）：','例如：1')}
+    ${numInput('d9_meeting_waste','其中浪费的（小时）：','例如：2')}
+    <h3>2. 执行任务</h3>
+    ${numInput('d9_exec_total','执行总时长（小时）：','例如：5')}
+    ${numInput('d9_exec_value','其中创造独特价值的（小时）：','例如：2')}
+    ${numInput('d9_exec_repeat','其中重复劳动的（小时）：','例如：3')}
+    <h3>3. 沟通协调</h3>
+    ${numInput('d9_comm_total','沟通总时长（小时）：','例如：2')}
+    ${numInput('d9_comm_needed','其中必要的（小时）：','例如：1')}
+    ${numInput('d9_comm_async','其中可以异步的（小时）：','例如：1')}
+    <h3>4. 学习提升</h3>
+    ${numInput('d9_learn_total','学习总时长（小时）：','例如：1')}
+    ${numInput('d9_learn_target','其中有针对性的（小时）：','例如：0.5')}
+    ${numInput('d9_learn_random','其中漫无目的的（小时）：','例如：0.5')}
+    <hr class="section-divider">
+    <h3>立即优化：</h3>
+    ${textInput('d9_biggest_waste','浪费时间最多的1项是：','例如：浪费的会议')}
+    ${textInput('d9_optimization','下周如何减少这一项50%：','例如：下周拒绝至少2个会议',true)}
+    ${checkbox('d9_done','我已完成时间审计并制定优化方案')}
+  </div>`;
+}
+
+function renderDay10() {
+  return `<div class="week-header"><h1>第10天</h1><p>建立"拒绝"话术 · 10分钟</p></div>
+  <div class="card"><h2>准备3个拒绝模板</h2>
+    <p>复制到你的备忘录，随时使用：</p>
+    <h3>模板1：拒绝新任务</h3>
+    ${templateBox('"感谢信任，但我当前的优先级是[XX项目]，预计[XX日期]完成。\n如果接这个任务，[XX项目]会延期。您希望我调整优先级吗？"')}
+    <h3>模板2：拒绝低价值会议</h3>
+    ${templateBox('"这个会议的议题我可以通过文档同步吗？\n我现在在专注处理[XX紧急任务]，如果必须参会，\n我可以[提前看资料+异步反馈]。"')}
+    <h3>模板3：拒绝周末工作</h3>
+    ${templateBox('"我周末有个人安排无法调整，周一早上9点前我会优先处理这个。\n如果是紧急情况，麻烦说明具体影响，我评估一下。"')}
+    <hr class="section-divider">
+    <h3>本周使用记录：</h3>
+    ${checkbox('d10_copied','我已复制模板到备忘录')}
+    ${textInput('d10_used_day','我在第几天使用了模板：','例如：第10天')}
+    ${textInput('d10_used_which','使用了模板几：','例如：模板2')}
+    ${radioGroup('d10_result','结果：',[
+      {value:'success',label:'成功拒绝'},
+      {value:'expressed',label:'未成功，但表达了立场'}
+    ])}
+  </div>`;
+}
+
+function renderDay11() {
+  return `<div class="week-header"><h1>第11天</h1><p>设定"完美主义熔断器" · 15分钟</p></div>
+  <div class="card"><h2>给每类任务设定"及格线"</h2>
+    ${textInput('d11_ppt','PPT：做到什么程度就停止优化？','建议：3遍修改后停止')}
+    ${textInput('d11_code','代码：达到什么标准就提交？','建议：功能实现+基本测试通过')}
+    ${textInput('d11_doc','文档：写到什么程度就发出？','建议：核心信息说清楚即可')}
+    ${textInput('d11_design','设计：改几版就定稿？','建议：2-3版')}
+    ${textInput('d11_plan','方案：分析几个维度就够？','建议：3-5个关键维度')}
+    <hr class="section-divider">
+    <h3>强制执行：</h3>
+    ${checkbox('d11_stop','下次做任务时，达到及格线立即停止')}
+    ${checkbox('d11_wait24h','如果忍不住想继续优化，等24小时后再看')}
+    ${resultBox('info','通常你会发现"已经够好了"。完美主义是高成就者最大的时间黑洞。')}
+  </div>`;
+}
+
+function renderDay12() {
+  return `<div class="week-header"><h1>第12天</h1><p>找到你的"能量源" · 10分钟</p></div>
+  <div class="card"><h2>回顾过去1周</h2>
+    <h3>充电活动（做完后感觉有能量）：</h3>
+    ${textInput('d12_charge1','1.','',true)}
+    ${textInput('d12_charge2','2.','',true)}
+    ${textInput('d12_charge3','3.','',true)}
+    <h3>耗电活动（做完后感觉很累）：</h3>
+    ${textInput('d12_drain1','1.','',true)}
+    ${textInput('d12_drain2','2.','',true)}
+    ${textInput('d12_drain3','3.','',true)}
+    <hr class="section-divider">
+    <h3>立即优化：</h3>
+    ${checkbox('d12_charge_daily','下周每天至少做1个"充电活动"（即使只有15分钟）')}
+    ${checkbox('d12_reduce_drain','下周减少1个"耗电活动"（推掉/委托/优化）')}
+  </div>`;
+}
+
+function renderDay13() {
+  return `<div class="week-header"><h1>第13天</h1><p>建立"每日收盘"仪式 · 5分钟/天</p></div>
+  <div class="card"><h2>从今天开始，每天下班前5分钟</h2>
+    ${resultBox('info','设置每天18:00的闹钟提醒。连续7天，会变成习惯。')}
+    <h3>今日收盘清单：</h3>
+    ${textInput('d13_value','1. 今天我创造的独特价值：','如果写不出，明天优先做有独特价值的事',true)}
+    ${numInput('d13_hours','2. 今天我的工作时长（小时）：','如果>10小时，明天必须<10小时')}
+    ${radioGroup('d13_energy','3. 今天我的能量水平：',[
+      {value:'high',label:'8-10分（精力充沛）'},
+      {value:'medium',label:'5-7分（一般）'},
+      {value:'low',label:'1-4分（很累，明天减少1个任务）'}
+    ])}
+    ${textInput('d13_tomorrow','4. 明天最重要的1件事：','只写1件，明天第一个做')}
+    <hr class="section-divider">
+    ${checkbox('d13_alarm','已设置每天18:00闹钟提醒')}
+    ${checkbox('d13_done','今天的收盘已完成')}
+  </div>`;
+}
+
+function renderDay14() {
+  return `<div class="week-header"><h1>第14天</h1><p>第二周总结+调整 · 20分钟</p></div>
+  <div class="card"><h2>评估第8-13天的执行情况</h2>
+    <h3>第二周成果检查：</h3>
+    ${checkbox('d14_dim','我转换了竞争维度（第8天）')}
+    ${numInput('d14_dim_score','执行得分（1-10）：','')}
+    ${checkbox('d14_audit','我做了时间审计并优化（第9天）')}
+    ${textInput('d14_saved_hours','减少的浪费时间（小时/周）：','')}
+    ${checkbox('d14_reject','我使用了"拒绝"话术（第10天）')}
+    ${numInput('d14_reject_count','使用次数：','')}
+    ${checkbox('d14_baseline','我设定了及格线（第11天）')}
+    ${numInput('d14_baseline_count','执行次数：','')}
+    ${checkbox('d14_energy','我识别了能量源（第12天）')}
+    ${numInput('d14_charge_count','本周充电活动次数：','')}
+    ${checkbox('d14_closing','我建立了每日收盘仪式（第13天）')}
+    ${numInput('d14_closing_days','执行天数（/7天）：','')}
+    <hr class="section-divider">
+    <h3>调整建议：</h3>
+    ${resultBox('info','• 如果某项得分<5分 → 下周重点强化这一项<br>• 如果连续3项得分<5分 → 你可能需要外部帮助（导师/教练）')}
+    ${textInput('d14_focus','下周重点强化的领域：','',true)}
+  </div>`;
+}
+function renderDay15() {
+  return `<div class="week-header"><h1>第15天</h1><p>文化匹配深度测试 · 30分钟</p></div>
+  <div class="card"><h2>深度验证文化匹配</h2>
+    <p>观察这5个场景，选择最接近的答案：</p>
+    ${radioGroup('d15_c1','场景1：团队会议时，我提出不同意见',[
+      {value:'A',label:'A. 认真讨论，如果合理会采纳'},
+      {value:'B',label:'B. 礼貌听完，但不会改变决策'},
+      {value:'C',label:'C. 气氛尴尬，被认为"不合群"'}
+    ])}
+    ${radioGroup('d15_c2','场景2：我比同事早完成任务',[
+      {value:'A',label:'A. 被表扬"效率高"'},
+      {value:'B',label:'B. 没什么反应'},
+      {value:'C',label:'C. 被认为"太卷"或"给别人压力"'}
+    ])}
+    ${radioGroup('d15_c3','场景3：绩效评估时强调个人贡献',[
+      {value:'A',label:'A. 认可并体现在评分上'},
+      {value:'B',label:'B. 说"不错"但强调"也要看团队"'},
+      {value:'C',label:'C. 说"不要太强调个人，要有团队精神"'}
+    ])}
+    ${radioGroup('d15_c4','场景4：我想主导一个项目方向',[
+      {value:'A',label:'A. 如果方案好，给我机会'},
+      {value:'B',label:'B. 说"可以试试"但实际决策权不在我'},
+      {value:'C',label:'C. 说"要跟大家商量"，最后按领导想法走'}
+    ])}
+    ${radioGroup('d15_c5','场景5：我的工作强度比团队平均高',[
+      {value:'A',label:'A. 正常，大家各有节奏'},
+      {value:'B',label:'B. 有人私下说"你这么拼，我们压力大"'},
+      {value:'C',label:'C. 领导找我谈"要注意团队和谐"'}
+    ])}`;
+  const cCount = ['d15_c1','d15_c2','d15_c3','d15_c4','d15_c5'].filter(k => getData(k,'') === 'C').length;
+  const answered = ['d15_c1','d15_c2','d15_c3','d15_c4','d15_c5'].filter(k => getData(k,'')).length;
+  let extra = '';
+  if (answered >= 3) {
+    const t = cCount <= 1 ? 'safe' : cCount <= 3 ? 'warning' : 'danger';
+    const msg = cCount <= 1 ? '前面判断可能有误，再观察1周' : cCount <= 3 ? '确实低匹配，准备Plan B' : '确定不匹配，必须离开';
+    extra = resultBox(t, `<strong>C的个数：${cCount}个 → ${msg}</strong>`);
+    if (cCount >= 3) {
+      extra += `<h3>立即行动：</h3>`;
+      extra += checkbox('d15_apply10','今天投10份简历');
+      extra += checkbox('d15_interview2','本周约2个面试');
+      extra += checkbox('d15_offer','目标：第30天前拿到至少1个offer');
+    }
+  }
+  return extra + '</div>';
+}
+
+function renderDay16() {
+  return `<div class="week-header"><h1>第16天</h1><p>准备"文化匹配面试问题" · 15分钟</p></div>
+  <div class="card"><h2>面试新公司时，用这5个问题判断文化</h2>
+    <p>把这些问题保存好，每次面试时使用：</p>
+    <table>
+      <tr><th>问题</th><th>期待答案</th></tr>
+      <tr><td>Q1: "团队的绩效考核是个人KPI为主，还是团队整体为主？"</td><td>个人KPI占比≥60%</td></tr>
+      <tr><td>Q2: "如果我的方案明显优于其他方案，我应该如何表达？"</td><td>直接说，如果方案好会被采纳</td></tr>
+      <tr><td>Q3: "团队对加班的期望是什么？大家一般什么时间走？"</td><td>按项目需要，不强制统一时间</td></tr>
+      <tr><td>Q4: "晋升主要看什么？个人业绩还是综合评价？"</td><td>个人业绩占比≥70%</td></tr>
+      <tr><td>Q5: "能举个例子，团队里有人因为个人贡献突出拿到更高回报吗？"</td><td>能举出具体例子</td></tr>
+    </table>
+    <hr class="section-divider">
+    <h3>评分标准：</h3>
+    ${resultBox('safe','5个问题都符合期待 → ✅ 高度匹配')}
+    ${resultBox('warning','3-4个符合 → ⚠️ 可以接受')}
+    ${resultBox('danger','≤2个符合 → 🛑 不要去')}
+    ${checkbox('d16_saved','我已保存这5个面试问题')}
+    ${textInput('d16_notes','面试记录和笔记：','可以记录面试结果...',true)}
+  </div>`;
+}
+
+function renderDay17() {
+  return renderResumeDay(17, '投递简历 - 外企（第1天）', '外企（欧美）');
+}
+function renderDay18() {
+  return renderResumeDay(18, '投递简历 - 外企（第2天）', '外企（欧美）');
+}
+function renderDay19() {
+  return renderResumeDay(19, '投递简历 - 大厂（第1天）', '互联网大厂（字节/腾讯/阿里）');
+}
+function renderDay20() {
+  return renderResumeDay(20, '投递简历 - 大厂（第2天）', '互联网大厂');
+}
+
+function renderResumeDay(day, title, category) {
+  return `<div class="week-header"><h1>第${day}天</h1><p>${title} · 30分钟</p></div>
+  <div class="card"><h2>${title}</h2>
+    <p>目标类型：<strong>${category}</strong></p>
+    ${resultBox('info','如果第15天确认文化匹配，这天可以跳过。但建议至少了解市场行情。')}
+    <h3>投递记录：</h3>
+    ${textInput('d'+day+'_company1','公司1名称：','')}
+    ${textInput('d'+day+'_position1','职位1：','')}
+    ${checkbox('d'+day+'_applied1','已投递公司1')}
+    ${textInput('d'+day+'_company2','公司2名称：','')}
+    ${textInput('d'+day+'_position2','职位2：','')}
+    ${checkbox('d'+day+'_applied2','已投递公司2')}
+    <h3>晚上复盘：</h3>
+    ${textInput('d'+day+'_review','这些公司的文化可能匹配吗？','写下你的判断...',true)}
+  </div>`;
+}
+
+function renderDay21() {
+  return `<div class="week-header"><h1>第21天</h1><p>第三周总结 · 15分钟</p></div>
+  <div class="card"><h2>本周投递统计</h2>
+    ${numInput('d21_total_applied','本周投递总数：','')}
+    ${numInput('d21_replies','收到回复数：','')}
+    ${numInput('d21_interviews','约到面试数：','')}`;
+  const applied = parseInt(getData('d21_total_applied','')) || 0;
+  const replies = parseInt(getData('d21_replies','')) || 0;
+  let extra = '';
+  if (applied > 0) {
+    const rate = Math.round(replies / applied * 100);
+    extra = resultBox(rate >= 30 ? 'safe' : 'warning',
+      `回复率：${rate}%` + (rate < 30 ? '<br><strong>回复率<30%，检查简历是否需要优化</strong>' : '<br>回复率良好，继续保持'));
+  }
+  return extra + `
+    ${textInput('d21_reflection','第三周整体反思：','',true)}
+    ${checkbox('d21_done','第三周总结已完成')}
+  </div>`;
+}
+function renderDay22() {
+  return `<div class="week-header"><h1>第22天</h1><p>3年后的你 · 15分钟</p></div>
+  <div class="card"><h2>不要想"应该"，想"真正想要"</h2>
+    <h3>3年后（2028年），我最理想的状态：</h3>
+    ${textInput('d22_ideal_work','工作内容：我每天主要在做什么？','不是职位名称，是具体做什么',true)}
+    ${textInput('d22_ideal_env','工作环境：什么类型的公司？','外企/大厂/创业公司/自由职业')}
+    ${textInput('d22_ideal_hours','工作强度：每周多少小时？几点下班？','例如：45小时，6点下班')}
+    ${textInput('d22_ideal_income','收入水平：年收入多少万？','够用即可，不要虚高')}
+    ${textInput('d22_ideal_skill','技能储备：掌握了什么能力？','要具体，比如"独立做0-1产品"',true)}
+    ${textInput('d22_ideal_life','生活状态：下班后主要在做什么？','工作之外的生活',true)}
+    <hr class="section-divider">
+    <h3>对照现状 - 如果继续当前路径，3年后我会：</h3>
+    ${textInput('d22_curr_work','工作内容：','',true)}
+    ${textInput('d22_curr_env','工作环境：','')}
+    ${textInput('d22_curr_hours','工作强度：','')}
+    ${textInput('d22_curr_income','收入水平：','')}
+    ${textInput('d22_curr_skill','技能储备：','',true)}
+    ${textInput('d22_curr_life','生活状态：','',true)}
+    <hr class="section-divider">
+    ${numInput('d22_match','理想状态 vs 当前路径的匹配度（%）：','例如：60')}`;
+  const match = parseInt(getData('d22_match','')) || 0;
+  let extra = '';
+  if (match > 0) {
+    const t = match > 80 ? 'safe' : match >= 50 ? 'warning' : 'danger';
+    const msg = match > 80 ? '✅ 路径正确，继续' : match >= 50 ? '⚠️ 需要优化' : '🛑 路径错了，必须调整';
+    extra = resultBox(t, `<strong>匹配度：${match}% → ${msg}</strong>`);
+  }
+  return extra + '</div>';
+}
+
+function renderDay23() {
+  return `<div class="week-header"><h1>第23天</h1><p>找到你的"导师" · 20分钟</p></div>
+  <div class="card"><h2>导师不一定是正式的</h2>
+    <p>可以是任何你想成为的人。</p>
+    <h3>1. 工作方式导师：</h3>
+    ${textInput('d23_mentor1_name','这个人是谁？','TA的工作方式我很欣赏')}
+    ${textInput('d23_mentor1_why','我欣赏TA的：','',true)}
+    <h3>2. 技能导师：</h3>
+    ${textInput('d23_mentor2_name','这个人是谁？','TA的某项能力我想学')}
+    ${textInput('d23_mentor2_why','我想学TA的：','',true)}
+    <h3>3. 生活方式导师：</h3>
+    ${textInput('d23_mentor3_name','这个人是谁？','TA的工作-生活平衡我想要')}
+    ${textInput('d23_mentor3_why','我想要TA的：','',true)}
+    <hr class="section-divider">
+    <h3>立即行动：</h3>
+    ${checkbox('d23_contact','找到这3个人的联系方式')}
+    ${checkbox('d23_invite','本周内约其中1个人喝咖啡/视频聊30分钟')}
+    ${textInput('d23_question','问TA：你是怎么做到____的？','写下你想问的具体问题',true)}
+    ${resultBox('info','如果约不到本人：研究TA的公开内容（文章/演讲/采访），找到TA的做事模式。')}
+  </div>`;
+}
+
+function renderDay24() {
+  return `<div class="week-header"><h1>第24天</h1><p>建立"学习地图" · 20分钟</p></div>
+  <div class="card"><h2>根据第22天的3年目标，倒推现在应该学什么</h2>
+    <h3>P0（未来6个月必须学）：</h3>
+    ${textInput('d24_p0_1','技能1：','',true)}
+    ${textInput('d24_p0_1_method','学习方式：','')}
+    ${textInput('d24_p0_1_done','完成标志：','')}
+    ${textInput('d24_p0_2','技能2：','',true)}
+    ${textInput('d24_p0_2_method','学习方式：','')}
+    ${textInput('d24_p0_2_done','完成标志：','')}
+    <h3>P1（未来1年要学）：</h3>
+    ${textInput('d24_p1_1','1.','',true)}
+    ${textInput('d24_p1_2','2.','',true)}
+    <h3>P2（未来3年慢慢学）：</h3>
+    ${textInput('d24_p2_1','1.','',true)}
+    ${textInput('d24_p2_2','2.','',true)}
+    <hr class="section-divider">
+    <h3>立即行动：</h3>
+    ${checkbox('d24_start_p0','选P0的第1项，今天开始学30分钟')}
+    ${textInput('d24_schedule','每周固定学习时间：','例如：每周三，20:00到21:30')}
+    ${checkbox('d24_buy','买书/报课/找mentor（如果需要）')}
+  </div>`;
+}
+
+function renderDay25() {
+  return `<div class="week-header"><h1>第25天</h1><p>删除"假学习" · 10分钟</p></div>
+  <div class="card"><h2>检查你的学习活动</h2>
+    <p>哪些是"假学习"？</p>
+    ${textInput('d25_activity1','活动1：','例如：刷技术文章')}
+    ${radioGroup('d25_a1_type','活动1是真学习还是假学习？',[
+      {value:'real',label:'真学习（有明确目标，学完能用）'},
+      {value:'fake',label:'假学习（漫无目的，学完就忘）'}
+    ])}
+    ${textInput('d25_activity2','活动2：','例如：听播客')}
+    ${radioGroup('d25_a2_type','活动2是真学习还是假学习？',[
+      {value:'real',label:'真学习（有针对性选择，记笔记应用）'},
+      {value:'fake',label:'假学习（打发时间，被动接受）'}
+    ])}
+    ${textInput('d25_activity3','活动3：','例如：看书')}
+    ${radioGroup('d25_a3_type','活动3是真学习还是假学习？',[
+      {value:'real',label:'真学习（带着问题看，看完做总结）'},
+      {value:'fake',label:'假学习（从头到尾看，看完不记得）'}
+    ])}
+    <hr class="section-divider">
+    ${resultBox('info','<strong>立即优化：</strong><br>• 停止所有"假学习"活动<br>• 把这些时间用在第24天的P0学习上<br>• 或者直接用来休息（休息比假学习更有价值）')}
+    ${checkbox('d25_stop_fake','我已停止假学习活动')}
+  </div>`;
+}
+
+function renderDay26() {
+  return `<div class="week-header"><h1>第26天</h1><p>建立"输出倒逼输入"机制 · 15分钟</p></div>
+  <div class="card"><h2>学习最好的方式是"教别人"或"用出来"</h2>
+    ${textInput('d26_p0_topic','P0学习的第1项是：',getData('d24_p0_1',''))}
+    <h3>我的输出方式：</h3>
+    ${radioGroup('d26_output_method','选择输出方式：',[
+      {value:'teach',label:'教团队同事（内部分享）'},
+      {value:'write',label:'写文章/笔记（公开或私人）'},
+      {value:'apply',label:'用在实际项目中（边学边用）'},
+      {value:'demo',label:'做一个小demo/作品'}
+    ])}
+    ${textInput('d26_output_deadline','输出截止日期：','年-月-日')}
+    <hr class="section-divider">
+    ${resultBox('warning','<strong>为什么要输出？</strong><br>• 输入不输出，10天后忘记90%<br>• 输入+输出，90天后记得70%<br>• <strong>第30天之前，完成至少1次输出</strong>')}
+    ${checkbox('d26_committed','我已确定输出计划')}
+  </div>`;
+}
+
+function renderDay27() {
+  return `<div class="week-header"><h1>第27天</h1><p>建立"能量账户" · 10分钟</p></div>
+  <div class="card"><h2>把精力当成钱，记录"收入"和"支出"</h2>
+    <h3>收入（充电活动）：</h3>
+    ${textInput('d27_in1','活动1：','')} ${numInput('d27_in1_pts','能量点数（+）：','例如：3')}
+    ${textInput('d27_in2','活动2：','')} ${numInput('d27_in2_pts','能量点数（+）：','')}
+    ${textInput('d27_in3','活动3：','')} ${numInput('d27_in3_pts','能量点数（+）：','')}
+    <h3>支出（耗电活动）：</h3>
+    ${textInput('d27_out1','活动1：','')} ${numInput('d27_out1_pts','能量点数（-）：','例如：5')}
+    ${textInput('d27_out2','活动2：','')} ${numInput('d27_out2_pts','能量点数（-）：','')}
+    ${textInput('d27_out3','活动3：','')} ${numInput('d27_out3_pts','能量点数（-）：','')}`;
+  const income = (parseInt(getData('d27_in1_pts',''))||0) + (parseInt(getData('d27_in2_pts',''))||0) + (parseInt(getData('d27_in3_pts',''))||0);
+  const expense = (parseInt(getData('d27_out1_pts',''))||0) + (parseInt(getData('d27_out2_pts',''))||0) + (parseInt(getData('d27_out3_pts',''))||0);
+  const balance = income - expense;
+  let extra = '';
+  if (income || expense) {
+    const t = balance > 0 ? 'safe' : balance === 0 ? 'warning' : 'danger';
+    const msg = balance > 0 ? '✅ 可持续' : balance === 0 ? '⚠️ 刚好平衡，没有余量' : '🛑 透支，必须减少支出或增加收入';
+    extra = `<div class="summary-grid">
+      <div class="summary-card"><h4>总收入</h4><div class="value" style="color:var(--success)">+${income}</div></div>
+      <div class="summary-card"><h4>总支出</h4><div class="value" style="color:var(--danger)">-${expense}</div></div>
+      <div class="summary-card"><h4>净余额</h4><div class="value" style="color:var(--${t})">${balance}</div></div>
+    </div>` + resultBox(t, `<strong>${msg}</strong>`);
+    if (balance < 0) {
+      extra += checkbox('d27_reduce','下周减少1个最耗电的活动');
+      extra += checkbox('d27_add','下周增加1个充电活动（即使只有30分钟/天）');
+    }
+  }
+  return extra + '</div>';
+}
+function renderDay28() {
+  const match = getData('d22_match','?');
+  return `<div class="week-header"><h1>第28天</h1><p>第四周总结 · 30分钟</p></div>
+  <div class="card"><h2>完整回顾第22-27天</h2>
+    ${radioGroup('d28_goal_clear','1. 我的3年目标清晰吗？（第22天）',[
+      {value:'clear',label:'清晰'},
+      {value:'vague',label:'模糊'},
+      {value:'unknown',label:'不知道'}
+    ])}
+    <p>3年目标匹配度：<strong>${match}%</strong>（来自第22天）</p>
+    ${radioGroup('d28_path','如果继续当前路径，能到达3年目标吗？',[
+      {value:'continue',label:'>80% 继续'},
+      {value:'optimize',label:'50-80% 优化'},
+      {value:'change',label:'<50% 调整'}
+    ])}
+    ${radioGroup('d28_mentor','3. 我找到导师了吗？（第23天）',[
+      {value:'met',label:'是，并且约到了'},
+      {value:'found',label:'找到了但没约'},
+      {value:'no',label:'没找到'}
+    ])}
+    ${radioGroup('d28_learning','4. 我开始P0学习了吗？（第24天）',[
+      {value:'yes',label:'是，已经开始'},
+      {value:'no',label:'还没开始'}
+    ])}
+    ${numInput('d28_learn_hours','P0学习总时长（小时）：','')}
+    ${numInput('d28_energy_balance','5. 能量账户余额（第27天）：','')}
+    <hr class="section-divider">
+    <h3>做出决策 - 选择你的第30天行动：</h3>
+    ${radioGroup('d28_decision','根据上面的答案，选择：',[
+      {value:'leave',label:'场景A：换公司（匹配度<50% + 文化不匹配）'},
+      {value:'optimize',label:'场景B：优化当前环境（匹配度50-80% + 能量透支）'},
+      {value:'keep',label:'场景C：保持并升级（匹配度>80% + 能量健康）'}
+    ])}
+  </div>`;
+}
+
+function renderDay29() {
+  // Gather data from previous days
+  const direction = getData('d1_direction','') === 'match' ? '匹配' : getData('d1_direction','') === 'mismatch' ? '不匹配' : '未填写';
+  const matchPct = getData('d22_match','?');
+  const avgHours = getData('d1_hours','?');
+  const hRisk = parseInt(avgHours) < 60 ? '安全' : parseInt(avgHours) <= 70 ? '警告' : parseInt(avgHours) > 70 ? '危险' : '?';
+  const energyBalance = getData('d28_energy_balance','?');
+  const cCount1 = ['d1_c1','d1_c2','d1_c3','d1_c4','d1_c5'].filter(k => getData(k,'') === 'C').length;
+  const cCount15 = ['d15_c1','d15_c2','d15_c3','d15_c4','d15_c5'].filter(k => getData(k,'') === 'C').length;
+  const closingDays = getData('d14_closing_days','?');
+
+  return `<div class="week-header"><h1>第29天</h1><p>最后准备 - 数据汇总 · 60分钟</p></div>
+  <div class="card"><h2>30天诊断结果汇总</h2>
+    <p>把前面28天的所有答案汇总成一张表。</p>
+
+    <h3>【方向】</h3>
+    <div class="summary-grid">
+      <div class="summary-card"><h4>热爱-战略匹配度（第1天）</h4><div class="value" style="font-size:16px">${direction}</div></div>
+      <div class="summary-card"><h4>3年目标匹配度（第22天）</h4><div class="value">${matchPct}%</div></div>
+    </div>
+
+    <h3>【强度】</h3>
+    <div class="summary-grid">
+      <div class="summary-card"><h4>平均工作时长</h4><div class="value">${avgHours}h/周</div></div>
+      <div class="summary-card"><h4>倦怠风险等级</h4><div class="value" style="font-size:16px">${hRisk}</div></div>
+      <div class="summary-card"><h4>能量账户余额</h4><div class="value">${energyBalance}</div></div>
+    </div>
+
+    <h3>【文化】</h3>
+    <div class="summary-grid">
+      <div class="summary-card"><h4>文化匹配度（第1天）</h4><div class="value">${cCount1}个C</div></div>
+      <div class="summary-card"><h4>深度验证（第15天）</h4><div class="value">${cCount15}个C</div></div>
+    </div>
+
+    <h3>【学习】</h3>
+    ${numInput('d29_p0_pct','P0学习进度（%）：','')}
+    ${numInput('d29_output_count','输出次数：','')}
+
+    <h3>【习惯】</h3>
+    ${numInput('d29_closing_rate','每日收盘执行天数（/30天）：','')}
+    ${numInput('d29_rest_rate','周末休息执行次数（/4次）：','')}
+    ${numInput('d29_reject_count','"拒绝"使用总次数：','')}
+
+    <hr class="section-divider">
+    ${resultBox('info','<strong>准备明天的决策：</strong><br>• 把这个页面截图保存<br>• 明天（第30天）带着这些数据做最终决定')}
+    ${checkbox('d29_screenshot','我已保存汇总数据')}
+  </div>`;
+}
+
+function renderDay30() {
+  const decision = getData('d28_decision','');
+  return `<div class="week-header" style="background:linear-gradient(135deg,#dc2626,#9333ea)"><h1>第30天</h1><p>最终决策日 · 90分钟</p></div>
+
+  <div class="card">
+    <h2>场景A：需要换环境</h2>
+    <p style="color:var(--text-secondary)">适用条件：文化不匹配（≥3个C）/ 3年目标匹配度&lt;50% / 倦怠风险"危险"且无法改善</p>
+    ${decision === 'leave' ? resultBox('danger','<strong>根据第28天的选择，你选择了这个场景</strong>') : ''}
+    <h3>第30天立即做：</h3>
+    ${checkbox('d30a_companies','确认目标公司清单（至少10家）')}
+    ${checkbox('d30a_resume','更新简历')}
+    ${checkbox('d30a_apply5','今天投递5份简历')}
+    <h3>未来30天（第31-60天）：</h3>
+    ${checkbox('d30a_weekly_interview','每周面试至少2家')}
+    ${checkbox('d30a_2offers','目标：第60天前拿到至少2个offer')}
+    ${checkbox('d30a_filter','用第16天的5个问题筛选文化匹配的offer')}
+    ${textInput('d30a_leave_date','离职日期：','年-月-日')}
+  </div>
+
+  <div class="card">
+    <h2>场景B：优化当前环境</h2>
+    <p style="color:var(--text-secondary)">适用条件：文化匹配或低匹配（&lt;3个C）/ 3年目标匹配度50-80% / 倦怠风险"警告"但可控</p>
+    ${decision === 'optimize' ? resultBox('warning','<strong>根据第28天的选择，你选择了这个场景</strong>') : ''}
+    <h3>第30天立即做：</h3>
+    ${checkbox('d30b_1on1','跟leader约1:1，说明需要调整节奏')}
+    ${checkbox('d30b_standard','明确"够了"标准（第3天的结果）')}
+    ${checkbox('d30b_60h','下周工作时长强制<60小时')}
+    <h3>未来30天（第31-60天）：</h3>
+    ${checkbox('d30b_closing','保持每日收盘仪式')}
+    ${checkbox('d30b_rest','每周周末强制休息')}
+    ${checkbox('d30b_audit','每月审计：工作时长、能量余额、独特价值')}
+    ${resultBox('warning','<strong>3个月后（第90天）复查：</strong>如果情况没有改善，启动场景A（换环境）')}
+  </div>
+
+  <div class="card">
+    <h2>场景C：保持并升级</h2>
+    <p style="color:var(--text-secondary)">适用条件：文化匹配 / 3年目标匹配度&gt;80% / 倦怠风险"安全"</p>
+    ${decision === 'keep' ? resultBox('safe','<strong>根据第28天的选择，你选择了这个场景</strong>') : ''}
+    <h3>第30天立即做：</h3>
+    ${checkbox('d30c_habits','保持已建立的习惯（每日收盘、周末休息）')}
+    ${checkbox('d30c_p0','加速P0学习（从每周2小时增加到5小时）')}
+    ${checkbox('d30c_output','开始输出（第26天的计划）')}
+    <h3>未来30天（第31-60天）：</h3>
+    ${checkbox('d30c_first_output','完成第1次输出（分享/文章/demo）')}
+    ${checkbox('d30c_hard_project','主动要1个"别人做不了"的项目')}
+    ${checkbox('d30c_mentor','找到导师并建立定期交流')}
+    <h3>3个月后（第90天）目标：</h3>
+    ${checkbox('d30c_expert','成为团队某个领域的"第一专家"')}
+    ${checkbox('d30c_influence','建立个人影响力（团队内或行业内）')}
+  </div>
+
+  <div class="card">
+    <h2>无论选择哪个场景，都要保持这些习惯</h2>
+    <table>
+      <tr><th>频率</th><th>习惯</th></tr>
+      <tr><td>每天</td><td>每日收盘（5分钟）+ 工作时长&lt;10小时</td></tr>
+      <tr><td>每周</td><td>周末强制休息（至少1天） + 周总结（15分钟）</td></tr>
+      <tr><td>每月</td><td>月度审计（工作时长、能量余额、独特价值）</td></tr>
+      <tr><td>每季度</td><td>文化匹配度复查 + 3年目标复查</td></tr>
+    </table>
+  </div>
+
+  <div class="final-message">
+    <h2>写给你的最后一段话</h2>
+    <p>30天前，你可能觉得"改变很难"。</p>
+    <p>30天后，你会发现"持续做小事，就是改变"。</p>
+    <p style="margin-top:16px">如果30天后，你还在做这些小事：每天收盘、周末休息、记录工作时长、问"我创造了什么独特价值"</p>
+    <p><strong>那你已经超过了90%的人。</strong></p>
+    <p style="margin-top:16px">因为大多数人知道很多道理，但从不执行。</p>
+    <p><strong>你已经坚持了30天。接下来继续。</strong></p>
+    <p style="margin-top:16px">3年后的你，会感谢现在的你。</p>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--danger)">
+    <h2>紧急求助</h2>
+    <p>如果30天后，你发现以下情况，请<strong>立即寻求专业帮助</strong>：</p>
+    <ul>
+      <li>工作时长还是>70小时，无法降低</li>
+      <li>周末完全无法休息，一想到周一就焦虑</li>
+      <li>能量账户持续透支，感觉要崩溃</li>
+      <li>对所有事情都失去兴趣</li>
+    </ul>
+    ${resultBox('danger','<strong>这不是"意志力不够"，这是需要专业帮助的信号。</strong><br><br>1. 预约心理咨询（不要等）<br>2. 跟最信任的朋友/家人说明情况<br>3. 考虑休假1-2周（不是"等不忙了"，是"现在立即"）<br><br><strong>记住：寻求帮助不是软弱，是智慧。</strong>')}
+  </div>`;
+}
+// ========== MAIN RENDER ==========
+const dayRenderers = {
+  1: renderDay1, 2: renderDay2, 3: renderDay3, 4: renderDay4,
+  5: renderDay5, 6: renderDay6, 7: renderDay7, 8: renderDay8,
+  9: renderDay9, 10: renderDay10, 11: renderDay11, 12: renderDay12,
+  13: renderDay13, 14: renderDay14, 15: renderDay15, 16: renderDay16,
+  17: renderDay17, 18: renderDay18, 19: renderDay19, 20: renderDay20,
+  21: renderDay21, 22: renderDay22, 23: renderDay23, 24: renderDay24,
+  25: renderDay25, 26: renderDay26, 27: renderDay27, 28: renderDay28,
+  29: renderDay29, 30: renderDay30,
+};
+
+function renderContent() {
+  const el = document.getElementById('content');
+  const renderer = dayRenderers[currentDay];
+  if (renderer) {
+    el.innerHTML = renderer() + dayNav();
+  }
+}
+
+// ========== INIT ==========
+renderSidebar();
+renderContent();
+
+// Handle back button
+window.addEventListener('popstate', () => {
+  renderSidebar();
+  renderContent();
+});
+
+// Close sidebar on resize to desktop
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+});
+</script>
+</body>
+</html>
